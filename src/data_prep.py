@@ -8,22 +8,49 @@ calls these functions. Fix your random seed everywhere (see SEED).
 from __future__ import annotations
 
 import numpy as np
-
+import pandas as pd
 # --- Config -----------------------------------------------------------------
 SEED = 42
-DATA_PATH = "data/bina_az_sale.csv"   # change if your filename differs
+DATA_PATH = "data/house_sale.csv"   # change if your filename differs
 
-# Columns that LEAK the target (derived from price). Drop these before training.
-# TODO: list the actual leakage columns you find (e.g. a unit/per-m2 price).
 LEAKAGE_COLUMNS: list[str] = [
-    # "unit_price",
-    # "total_price",
+    "unit_price",
+    "total_price",
+    "owner_name",
+    "shop_name",
+    "id_x", 
+    "rel_url", 
+    "estate_rel_url_x",
+    "datetime_scrape_x",
+    "day_x",
+    "city_when",
+    "hour_x",
+    "vip",
+    "featured",
+    "mortgage",
+    "repair",
+    "bill_of_sale",
+    "products_label",
+    "estate_details_id_y",
+    "estate_id",
+    "estate_rel_url_y",
+    "day_y",
+    "hour_y",
+    "datetime_scrape_y",
+    "currency_x",
+    "currency_y",
+    "updated",
+    "estate_details_id_x",
+    "img_url",
+    "id_y",
+    "price"
 ]
 
 
 def load_raw(path: str = DATA_PATH):
     """Read the raw CSV into a DataFrame (keep UTF-8). Return it unmodified."""
-    raise NotImplementedError("TODO: load the raw CSV")
+    data = pd.read_csv(DATA_PATH)
+    return data 
 
 
 def clean(df):
@@ -36,6 +63,13 @@ def clean(df):
       - drop LEAKAGE_COLUMNS.
     Return the cleaned DataFrame.
     """
+    df['area'] = df['Sahə'].str.replace(r'[^0-9.]', '', regex=True)
+    df['area'] = pd.to_numeric(df['Sahə'])
+    df['land_area'] = df['Torpaq sahəsi'].str.replace(r'[^0-9.]', '', regex=True)
+    df['land_area'] = pd.to_numeric(df['Torpaq sahəsi'])
+    df[['floor', 'total_floor']] = df['Mərtəbə'].str.split('/', expand=True)
+    df['floor'] = pd.to_numeric(df['floor'].str.strip(), errors='coerce').astype('Int64')
+    df['total_floor'] = pd.to_numeric(df['total_floor'].str.strip(), errors='coerce').astype('Int64')
     raise NotImplementedError("TODO: clean the data")
 
 
