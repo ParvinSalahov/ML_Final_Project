@@ -135,7 +135,45 @@ def make_features(df):
       - assemble X (features) and y (target `price`).
     Return (X, y, feature_names).
     """
-    raise NotImplementedError("TODO: build X, y")
+    binary_columns = ['repair', 'bill_of_sale', 'mortgage']
+    for col in binary_columns:
+        if col in df.columns:
+            df[col] = df[col].apply(tt.convert_to_binary)
+
+    df = pd.get_dummies(df, columns=['city', 'category'], drop_first=False, dtype=int)
+
+    for col in ['location', 'address']:
+        if col in df.columns:
+            freq_map = df[col].value_counts(normalize=True)
+            df[col] = df[col].map(freq_map).fillna(0)
+
+    category_rename_map = {
+    'category_Həyət evi/Bağ evi': 'category_country_house',
+    'category_Torpaq': 'category_land',
+    'category_Köhnə tikili': 'category_old_building',
+    'category_Yeni tikili': 'category_new_building',
+    'category_Obyekt': 'category_commercial', 
+    'category_Ofis': 'category_office',
+    'category_Qaraj': 'category_garage'
+    }
+
+    df = df.rename(columns=category_rename_map)
+
+    city_rename_map = {
+        'city_bakı': 'city_baku',
+        'city_xırdalan': 'city_khirdalan',
+        'city_xaçmaz': 'city_khachmaz',
+        'city_astara': 'city_astara',
+        'city_sumqayıt': 'city_sumgayit'
+    }
+
+    df = df.rename(columns=city_rename_map)
+
+    y = np.log1p(df['price'])
+    X = df.drop(columns=['price'])
+    feature_names = X.columns.tolist()
+    
+    return X, y, feature_names
 
 
 def make_tier_label(y_price, threshold=None):
@@ -146,7 +184,12 @@ def make_tier_label(y_price, threshold=None):
     Return (y_tier, threshold).  The threshold must come from TRAIN only
     (no peeking at val/test) to avoid leakage.
     """
-    raise NotImplementedError("TODO: derive the price-tier label")
+    if threshold is None:
+        threshold = np.median(y_price)
+    
+    y_tier = (y_price > threshold).astype(int)
+    
+    return y_tier, threshold
 
 
 def train_val_test_split(X, y, val_size=0.15, test_size=0.15, seed=SEED):
@@ -154,7 +197,36 @@ def train_val_test_split(X, y, val_size=0.15, test_size=0.15, seed=SEED):
     Deterministic split into train / validation / test.
     Return (X_tr, y_tr, X_val, y_val, X_te, y_te).
     """
-    raise NotImplementedError("TODO: split the data")
+
+    np.random.seed(seed)
+    
+    price_bins = pd.qcut(y, q=4, labels=False, duplicates='drop')
+    
+    train_indices = []
+    val_indices = []
+    test_indices = []
+    
+    for bin_val in np.unique(price_bins):
+        bin_idx = np.where(price_bins == bin_val)[0]
+        np.random.shuffle(bin_idx)
+        
+        n = len(bin_idx)
+        n_test = int(n * test_size)
+        n_val = int(n * val_size)
+        
+        test_indices.extend(bin_idx[:n_test])
+        val_indices.extend(bin_idx[n_test:n_test + n_val])
+        train_indices.extend(bin_idx[n_test + n_val:])
+        
+    np.random.shuffle(train_indices)
+    np.random.shuffle(val_indices)
+    np.random.shuffle(test_indices)
+    
+    X_tr, y_tr = X.iloc[train_indices], y.iloc[train_indices]
+    X_val, y_val = X.iloc[val_indices], y.iloc[val_indices]
+    X_te, y_te = X.iloc[test_indices], y.iloc[test_indices]
+    
+    return X_tr, y_tr, X_val, y_val, X_te, y_te
 
 
 def standardize(X_tr, *others):
@@ -164,4 +236,17 @@ def standardize(X_tr, *others):
     Return the scaled arrays in the same order as given.
     (Needed for the SVM; trees don't require it.)
     """
-    raise NotImplementedError("TODO: standardize using train stats")
+
+    means = X_tr.mean()
+    stds = X_tr.std()
+    
+    stds = stds.replace(0, 1)
+    
+    X_tr_scaled = (X_tr - means) / stds
+    
+    scaled_others = []
+    for df_split in others:
+        df_scaled = (df_split - means) / stds
+        scaled_others.append(df_scaled)
+        
+    return (X_tr_scaled, *scaled_others)
