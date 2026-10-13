@@ -81,7 +81,7 @@ def clean(df):
 
     non_room_categories = ['Torpaq', 'Qaraj', 'Obyekt']
     mask_rooms = df['Kateqoriya'].isin(non_room_categories)
-    df.loc[mask_rooms, 'Otaq sayı'] = df.loc[mask_rooms, 'Otaq sayı'].fillna(0)
+    df.loc[mask_rooms, 'Otaq sayı'] = df.loc[mask_rooms, 'Otaq sayı'].afillna(0)
 
     mask = (df['Kateqoriya'] == 'Həyət evi/Bağ evi') & (df['Otaq sayı'].isna())
     df.loc[mask, 'Otaq sayı'] = df[mask].apply(tt.get_rooms_from_row, axis=1)
@@ -117,7 +117,7 @@ def clean(df):
     df.rename(columns={'Çıxarış': 'bill_of_sale'}, inplace=True)
 
     df.rename(columns={'Otaq sayı': 'rooms'}, inplace=True)
-
+    df.rename(columns={'Kateqoriya': 'category'}, inplace=True)
     for cols in UNUSED_COLUMNS:
         df = df.drop(columns=[cols])
 
@@ -125,7 +125,7 @@ def clean(df):
     outlier_cols = ['price', 'area', 'land_area']
     df = tt.remove_outliers_iqr(df, columns=[col for col in outlier_cols if col in df.columns], multiplier=1.5)
 
-    raise NotImplementedError("TODO: clean the data")
+    return df
 
 
 def make_features(df):
