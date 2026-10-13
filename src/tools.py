@@ -104,25 +104,36 @@ def handle_duplicates_and_average_price(df, price_col='price'):
     return df
 
 def remove_outliers_iqr(df, columns, multiplier=1.5):
-    print(f"Row count before outlier removal: {len(df)}")
-    
-    initial_len = len(df)
     mask = pd.Series(True, index=df.index)
     
     for col in columns:
         if col not in df.columns:
             continue
-            )
-        q1 = df[col].quantile(0.25)
-        q3 = df[col].quantile(0.75)
+            
+        valid_subset = df[df[col] > 0][col]
+        
+        if len(valid_subset) == 0:
+            continue
+            
+        q1 = valid_subset.quantile(0.25)
+        q3 = valid_subset.quantile(0.75)
         iqr = q3 - q1
         
         lower_bound = q1 - (multiplier * iqr)
         upper_bound = q3 + (multiplier * iqr)
         
-        col_mask = (df[col] >= lower_bound) & (df[col] <= upper_bound)
+        col_mask = (df[col] == 0) | ((df[col] >= lower_bound) & (df[col] <= upper_bound))
         mask = mask & col_mask
-
         
     df_filtered = df[mask].reset_index(drop=True)
     return df_filtered
+
+
+def convert_to_binary(val):
+    if isinstance(val, str):
+        val_lower = val.strip().lower()
+        if val_lower == 'var':
+            return 1
+        elif val_lower in ['yoxdur', '0', '']:
+            return 0
+    return 1 if val == 1 else 0
