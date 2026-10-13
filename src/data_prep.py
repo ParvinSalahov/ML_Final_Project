@@ -9,11 +9,12 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+import src.tools as tt 
 # --- Config -----------------------------------------------------------------
 SEED = 42
 DATA_PATH = "data/house_sale.csv"   # change if your filename differs
 
-LEAKAGE_COLUMNS: list[str] = [
+UNUSED_COLUMNS: list[str] = [
     "unit_price",
     "total_price",
     "owner_name",
@@ -27,9 +28,6 @@ LEAKAGE_COLUMNS: list[str] = [
     "hour_x",
     "vip",
     "featured",
-    "mortgage",
-    "repair",
-    "bill_of_sale",
     "products_label",
     "estate_details_id_y",
     "estate_id",
@@ -43,7 +41,8 @@ LEAKAGE_COLUMNS: list[str] = [
     "estate_details_id_x",
     "img_url",
     "id_y",
-    "price"
+    "attributes",
+    "extra info"
 ]
 
 
@@ -64,12 +63,68 @@ def clean(df):
     Return the cleaned DataFrame.
     """
     df['area'] = df['Sahə'].str.replace(r'[^0-9.]', '', regex=True)
-    df['area'] = pd.to_numeric(df['Sahə'])
+    df['area'] = pd.to_numeric(df['Sahə'],errors='coerce')
     df['land_area'] = df['Torpaq sahəsi'].str.replace(r'[^0-9.]', '', regex=True)
-    df['land_area'] = pd.to_numeric(df['Torpaq sahəsi'])
+    df['land_area'] = pd.to_numeric(df['Torpaq sahəsi'],errors='coerce')
     df[['floor', 'total_floor']] = df['Mərtəbə'].str.split('/', expand=True)
     df['floor'] = pd.to_numeric(df['floor'].str.strip(), errors='coerce').astype('Int64')
     df['total_floor'] = pd.to_numeric(df['total_floor'].str.strip(), errors='coerce').astype('Int64')
+    df = df.drop(columns=['Sahə'])
+    df = df.drop(columns=['Torpaq sahəsi'])
+    df = df.drop(columns=['Mərtəbə'])
+
+    non_building_categories = ['Torpaq', 'Qaraj', 'Həyət evi/Bağ evi','Ofis','Obyekt']
+    mask = df['Kateqoriya'].isin(non_building_categories)
+    df.loc[mask, 'floor'] = df.loc[mask, 'floor'].fillna(0)
+    df.loc[mask, 'total_floor'] = df.loc[mask, 'total_floor'].fillna(0)
+
+
+    non_room_categories = ['Torpaq', 'Qaraj', 'Obyekt']
+    mask_rooms = df['Kateqoriya'].isin(non_room_categories)
+    df.loc[mask_rooms, 'Otaq sayı'] = df.loc[mask_rooms, 'Otaq sayı'].fillna(0)
+
+    mask = (df['Kateqoriya'] == 'Həyət evi/Bağ evi') & (df['Otaq sayı'].isna())
+    df.loc[mask, 'Otaq sayı'] = df[mask].apply(tt.get_rooms_from_row, axis=1)
+
+    mask = df['Otaq sayı'].isna() & df['Sahə'].notna()
+    df.loc[mask, 'Otaq sayı'] = df[mask].apply(
+    lambda row: tt.impute_rooms_byarea(row, df), 
+    axis=1
+    )
+
+    mask = (df['Kateqoriya'] == 'Torpaq')
+    df.loc[mask & df['land_area'].isna(), 'land_area'] = df.loc[mask, 'area']
+
+    mask = (df['Kateqoriya'] == 'Torpaq')
+    df.loc[mask, 'area'] = 0
+
+    other_categories = ~df['Kateqoriya'].isin(['Həyət evi/Bağ evi', 'Torpaq'])
+    df.loc[other_categories, 'land_area'] = 0
+    print(df['land_area'].value_counts(dropna=False))
+
+    mask = df['repair'].isna()
+    df.loc[mask, 'repair'] = df[mask].apply(tt.get_repair_from_row, axis=1)
+
+    df = df.drop(columns=['repair'])
+    df.rename(columns={'Təmir': 'repair'}, inplace=True)
+    df['repair'] = df['repair'].fillna(0)
+
+    df = df.drop(columns=['mortgage'])
+    df.rename(columns={'ipoteka': 'mortgage'}, inplace=True)
+    df['mortgage'] = df['mortgage'].fillna(0)
+
+    df = df.drop(columns=['bill_of_sale'])
+    df.rename(columns={'Çıxarış': 'bill_of_sale'}, inplace=True)
+
+    df.rename(columns={'Otaq sayı': 'rooms'}, inplace=True)
+
+    for cols in UNUSED_COLUMNS:
+        df = df.drop(columns=[cols])
+
+    df = tt.handle_duplicates_and_average_price(df)
+    outlier_cols = ['price', 'area', 'land_area']
+    df = tt.remove_outliers_iqr(df, columns=[col for col in outlier_cols if col in df.columns], multiplier=1.5)
+
     raise NotImplementedError("TODO: clean the data")
 
 
