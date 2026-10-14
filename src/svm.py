@@ -38,10 +38,15 @@ class PegasosSVM:
         n_iters: int = 20_000,     # number of sub-gradient steps
         random_state: int = 42,
     ):
+        if not np.isfinite(lambda_) or lambda_ <= 0:
+            raise ValueError("lambda_ must be a positive finite number")
+        if isinstance(n_iters, bool) or not isinstance(n_iters, (int, np.integer)) or n_iters < 1:
+            raise ValueError("n_iters must be a positive integer")
+
         self.lambda_ = lambda_
         self.n_iters = n_iters
         self.random_state = random_state
-        self.w = None              # weight vector
+        self.w: np.ndarray | None = None
         self.b = 0.0               # bias
         self.classes_: np.ndarray | None = None
 
@@ -70,7 +75,35 @@ class PegasosSVM:
         use eta_t = 1/(lambda*t), and apply the update above.
         Return self.
         """
-        raise NotImplementedError("TODO: Pegasos training loop")
+        features = np.asarray(X, dtype=float)
+        if features.ndim != 2 or features.shape[0] == 0 or features.shape[1] == 0:
+            raise ValueError("X must be a non-empty two-dimensional array")
+        if not np.all(np.isfinite(features)):
+            raise ValueError("X must contain only finite values")
+
+        labels = self._to_pm1(y)
+        if labels.shape[0] != features.shape[0]:
+            raise ValueError("X and y must contain the same number of samples")
+
+        rng = np.random.default_rng(self.random_state)
+        weights = np.zeros(features.shape[1], dtype=float)
+        bias = 0.0
+
+        for step in range(1, self.n_iters + 1):
+            index = rng.integers(features.shape[0])
+            x_i = features[index]
+            y_i = labels[index]
+            eta = 1.0 / (self.lambda_ * step)
+            margin = y_i * (np.dot(weights, x_i) + bias)
+
+            weights *= 1.0 - eta * self.lambda_
+            if margin < 1.0:
+                weights += eta * y_i * x_i
+                bias += eta * y_i
+
+        self.w = weights
+        self.b = bias
+        return self
 
     def decision_function(self, X):
         """Return the signed margin  w . x + b  for each row."""
