@@ -43,11 +43,26 @@ class PegasosSVM:
         self.random_state = random_state
         self.w = None              # weight vector
         self.b = 0.0               # bias
+        self.classes_: np.ndarray | None = None
 
-    @staticmethod
-    def _to_pm1(y):
+    def _to_pm1(self, y):
         """Map {0,1} (or any 2-class labels) to {-1, +1}. Store the mapping."""
-        raise NotImplementedError("TODO: encode labels to +/-1")
+        labels = np.asarray(y)
+        if labels.ndim != 1 or labels.size == 0:
+            raise ValueError("y must be a non-empty one-dimensional array")
+        if np.issubdtype(labels.dtype, np.number) and not np.all(np.isfinite(labels)):
+            raise ValueError("y must not contain missing or non-finite labels")
+
+        classes = np.unique(labels)
+        if classes.size != 2:
+            raise ValueError("y must contain exactly two distinct classes")
+
+        encoded = np.where(labels == classes[0], -1.0, 1.0)
+        if np.unique(encoded).size != 2:
+            raise ValueError("y must not contain missing or invalid class labels")
+
+        self.classes_ = classes
+        return encoded
 
     def fit(self, X, y):
         """
