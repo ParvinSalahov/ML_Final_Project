@@ -12,15 +12,27 @@ import numpy as np
 
 # --- Regression (Task A: price) --------------------------------------------
 def rmse(y_true, y_pred) -> float:
-    raise NotImplementedError("TODO: sqrt(mean((y_true - y_pred)^2))")
+    y_se = y_true-y_pred
+    se = np.dot(y_se, y_se)
+    mse = se/y_se.size
+    rmse_val = np.sqrt(mse)
+    return rmse_val
 
 
 def mae(y_true, y_pred) -> float:
-    raise NotImplementedError("TODO: mean(|y_true - y_pred|)")
+    y_e = y_true-y_pred
+    y_ae = np.abs(y_e)
+    mae_val = np.mean(y_ae)
+    return mae_val
 
 
 def r2(y_true, y_pred) -> float:
-    raise NotImplementedError("TODO: 1 - SS_res/SS_tot")
+    y_se = y_true-y_pred
+    res = np.dot(y_se, y_se)
+    mean=np.mean(y_true)
+    tot=np.dot((y_true-mean),(y_true-mean))
+    r2_val=1-(res/tot)
+    return r2_val
 
 
 # --- Classification (Task B: price tier) -----------------------------------
