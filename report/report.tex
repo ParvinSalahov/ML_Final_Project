@@ -123,10 +123,11 @@ split search, recursion, leaf rule, and hyperparameters.
 State the objective and the Pegasos update you implemented:
 \begin{equation}
   J(\mathbf{w},b)=\tfrac{\lambda}{2}\lVert\mathbf{w}\rVert^{2}
-  +\tfrac{1}{n}\sum_{i=1}^{n}\max\!\big(0,\,1-y_i(\mathbf{w}^{\top}\mathbf{x}_i+b)\big).
+  +\tfrac{1}{n}\sum_{i=1}^{n}\max\!\big(0,\,1-y_i(\mathbf{w}^{\top}\phi(\mathbf{x}_i)+b)\big).
 \end{equation}
 Explain the learning-rate schedule, feature scaling, and your non-linear
-extension (kernelised Pegasos or random Fourier features), if any.
+extension. This implementation uses random Fourier features to approximate
+an RBF kernel; report the chosen number of components and $\gamma$ value.
 
 \section{Experimental Setup}
 Metrics (RMSE/MAE/$R^2$ for regression; precision/recall/F1/AUC for
