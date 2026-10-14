@@ -39,10 +39,9 @@ def test_fit_learns_deterministic_separating_hyperplane():
     second = PegasosSVM(lambda_=0.01, n_iters=1000, random_state=7).fit(X, y)
 
     assert first.w is not None
-    assert first.w.shape == (1,)
+    assert first.w.shape == (first.n_components,)
     assert first.b == second.b
     np.testing.assert_array_equal(first.w, second.w)
-    assert np.all(y == np.where(X @ first.w + first.b >= 0, 1, 0))
     np.testing.assert_array_equal(first.predict(X), y)
     assert first.decision_function(X).shape == (X.shape[0],)
 
@@ -75,6 +74,37 @@ def test_decision_function_rejects_invalid_features(X):
 
     with pytest.raises(ValueError):
         model.decision_function(X)
+
+
+def test_random_fourier_features_learn_xor_and_are_deterministic():
+    X = np.array([[-1.0, -1.0], [-1.0, 1.0], [1.0, -1.0], [1.0, 1.0]])
+    y = np.array([0, 1, 1, 0])
+    options = {
+        "lambda_": 0.01,
+        "n_iters": 10_000,
+        "random_state": 12,
+        "n_components": 256,
+        "gamma": 1.0,
+    }
+
+    first = PegasosSVM(**options).fit(X, y)
+    second = PegasosSVM(**options).fit(X, y)
+
+    np.testing.assert_array_equal(first.predict(X), y)
+    np.testing.assert_array_equal(first.rff_weights_, second.rff_weights_)
+    np.testing.assert_array_equal(first.decision_function(X), second.decision_function(X))
+
+
+@pytest.mark.parametrize("n_components", [0, -1, 2.5, True])
+def test_constructor_rejects_invalid_random_feature_count(n_components):
+    with pytest.raises(ValueError, match="n_components"):
+        PegasosSVM(n_components=n_components)
+
+
+@pytest.mark.parametrize("gamma", [0, -1, np.inf, np.nan])
+def test_constructor_rejects_invalid_gamma(gamma):
+    with pytest.raises(ValueError, match="gamma"):
+        PegasosSVM(gamma=gamma)
 
 
 @pytest.mark.parametrize("lambda_", [0, -1, np.inf, np.nan])
