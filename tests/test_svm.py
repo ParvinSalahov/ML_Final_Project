@@ -43,6 +43,38 @@ def test_fit_learns_deterministic_separating_hyperplane():
     assert first.b == second.b
     np.testing.assert_array_equal(first.w, second.w)
     assert np.all(y == np.where(X @ first.w + first.b >= 0, 1, 0))
+    np.testing.assert_array_equal(first.predict(X), y)
+    assert first.decision_function(X).shape == (X.shape[0],)
+
+
+def test_predict_restores_original_class_labels():
+    X = np.array([[-2.0], [-1.0], [1.0], [2.0]])
+    y = np.array(["standard", "standard", "premium", "premium"])
+    model = PegasosSVM(lambda_=0.01, n_iters=1000, random_state=7).fit(X, y)
+
+    np.testing.assert_array_equal(model.predict(X), y)
+
+
+def test_predictions_require_a_fitted_model():
+    with pytest.raises(RuntimeError, match="fit"):
+        PegasosSVM().predict(np.array([[0.0]]))
+
+
+@pytest.mark.parametrize(
+    "X",
+    [
+        np.array([1.0, 2.0]),
+        np.array([[1.0, 2.0]]),
+        np.array([[np.nan]]),
+    ],
+)
+def test_decision_function_rejects_invalid_features(X):
+    model = PegasosSVM(lambda_=0.01, n_iters=20).fit(
+        np.array([[-1.0], [1.0]]), np.array([0, 1])
+    )
+
+    with pytest.raises(ValueError):
+        model.decision_function(X)
 
 
 @pytest.mark.parametrize("lambda_", [0, -1, np.inf, np.nan])
