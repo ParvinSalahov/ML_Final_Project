@@ -7,6 +7,12 @@ sanity-check your numbers or for the baseline models you compare against.
 
 from __future__ import annotations
 
+import os
+import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 import numpy as np
 
 
@@ -203,6 +209,70 @@ def plot_pr_curve(
     plt.close(fig)
 
 
+def plot_residuals(
+    y_true,
+    y_pred,
+    title: str = "Task A Regression: Predicted vs Actual",
+    save_path: str = None,
+) -> None:
+    """Plot Predicted vs Actual scatter and residual distribution for Task A."""
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available — skipping residual plot.")
+        return
+
+    y_true = np.asarray(y_true)
+    y_pred = np.asarray(y_pred)
+    res = y_true - y_pred
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5), dpi=150)
+
+    n_pts = len(y_true)
+    if n_pts > 4000:
+        idx = np.random.default_rng(42).choice(n_pts, size=4000, replace=False)
+        y_t_plot, y_p_plot = y_true[idx], y_pred[idx]
+    else:
+        y_t_plot, y_p_plot = y_true, y_pred
+
+    ax1.scatter(
+        y_t_plot, y_p_plot, alpha=0.25, s=12, color="#4C72B0", edgecolors="none"
+    )
+    min_val = min(float(y_true.min()), float(y_pred.min()))
+    max_val = max(float(y_true.max()), float(y_pred.max()))
+    ax1.plot(
+        [min_val, max_val],
+        [min_val, max_val],
+        "r--",
+        lw=1.5,
+        label="Perfect Fit (y = x)",
+    )
+    ax1.set_xlabel("Actual log(price)")
+    ax1.set_ylabel("Predicted log(price)")
+    ax1.set_title("Predicted vs Actual")
+    ax1.grid(True, linestyle="--", alpha=0.5)
+    ax1.legend(loc="upper left")
+
+    ax2.hist(res, bins=60, color="#55A868", edgecolor="white", alpha=0.85, density=True)
+    ax2.axvline(0, color="red", linestyle="--", lw=1.5)
+    ax2.set_xlabel("Residual (Actual - Predicted)")
+    ax2.set_ylabel("Density")
+    ax2.set_title(
+        f"Residual Distribution (Mean: {res.mean():.3f}, Std: {res.std():.3f})"
+    )
+    ax2.grid(True, linestyle="--", alpha=0.5)
+
+    fig.suptitle(title, fontsize=12)
+    fig.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+        print(f"Saved residual plot: {save_path}")
+    else:
+        plt.show()
+    plt.close(fig)
+
+
 # --- Comparison helper ------------------------------------------------------
 def compare(name_to_metrics: dict) -> None:
     """
@@ -375,3 +445,273 @@ def plot_svm_feature_weights(
     else:
         plt.show()
     plt.close(fig)
+
+
+# --- Problem 6: Complete Evaluation Runner ----------------------------------
+def evaluate_all(save_dir: str = "report/figures") -> dict:
+    """
+    Run full Problem 6 evaluation pipeline:
+      1. Train Decision Tree (Regression & Classification) and Pegasos SVM.
+      2. Generate feature importance plots for Tree and SVM.
+      3. Evaluate ROC-AUC, PR-AUC and plot PR curves.
+      4. Plot residuals and analyze failure modes (luxury outliers, listing anomalies, sparse districts).
+      5. Output the required Consolidated Results Table comparing all models on both tasks.
+    """
+    os.makedirs(save_dir, exist_ok=True)
+    from . import data_prep as dp
+    from .decision_tree import DecisionTree
+    from .svm import PegasosSVM
+    from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
+
+    print("Loading data...")
+    tr, va, te = dp.prepare_data(seed=dp.SEED)
+    X_tr_df, y_tr_price, feat_names, fit_info = dp.make_features(tr)
+    X_va_df, y_va_price, _, _ = dp.make_features(va, fit_info=fit_info)
+    X_te_df, y_te_price, _, _ = dp.make_features(te, fit_info=fit_info)
+
+    y_tr_cls, threshold = dp.make_tier_label(y_tr_price)
+    y_va_cls, _ = dp.make_tier_label(y_va_price, threshold=threshold)
+    y_te_cls, _ = dp.make_tier_label(y_te_price, threshold=threshold)
+
+    X_tr = X_tr_df.to_numpy(dtype=float)
+    X_va = X_va_df.to_numpy(dtype=float)
+    X_te = X_te_df.to_numpy(dtype=float)
+
+    # 1. Decision Tree Classification
+    print("\nFitting Decision Tree (entropy, depth=12, leaf=10)...")
+    tree_cls = DecisionTree(
+        task="classification",
+        criterion="entropy",
+        max_depth=12,
+        min_samples_leaf=10,
+        random_state=dp.SEED,
+    ).fit(X_tr, y_tr_cls.to_numpy(dtype=int))
+
+    plot_feature_importances(
+        tree_cls.feature_importances_,
+        feat_names,
+        title="Decision Tree Feature Importances (entropy, depth=12, leaf=10)",
+        top_n=15,
+        save_path=os.path.join(save_dir, "tree_feature_importances.png"),
+    )
+
+    # 2. Pegasos SVM Classification
+    print("\nFitting Pegasos SVM (lambda=1e-4, gamma=0.1, 30 epochs)...")
+    X_tr_scaled, X_va_scaled = dp.standardize(X_tr_df, X_va_df)
+    _, X_te_scaled = dp.standardize(X_tr_df, X_te_df)
+    X_tr_svm = X_tr_scaled.to_numpy(dtype=float)
+    X_va_svm = X_va_scaled.to_numpy(dtype=float)
+    X_te_svm = X_te_scaled.to_numpy(dtype=float)
+
+    svm = PegasosSVM(
+        lambda_=1e-4,
+        gamma=0.1,
+        n_epochs=30,
+        n_components=256,
+        use_rff=True,
+        random_state=dp.SEED,
+    ).fit(X_tr_svm, y_tr_cls.to_numpy(dtype=int))
+
+    plot_svm_feature_weights(
+        svm,
+        feat_names,
+        title="Pegasos SVM: Top Feature Contributions (proxy via RFF weights)",
+        top_n=15,
+        save_path=os.path.join(save_dir, "svm_feature_weights.png"),
+    )
+
+    # 3. PR-AUC and ROC-AUC
+    print("\nEvaluating PR-AUC & ROC-AUC for Task B (Price Tier)...")
+    tree_va_scores = tree_cls.predict_proba(X_va)[:, 1]
+    tree_te_scores = tree_cls.predict_proba(X_te)[:, 1]
+    svm_va_scores = svm.decision_function(X_va_svm)
+    svm_te_scores = svm.decision_function(X_te_svm)
+
+    val_test_auc_table = {
+        "Decision Tree (Val)": {
+            "ROC-AUC": roc_auc(y_va_cls, tree_va_scores),
+            "PR-AUC": pr_auc(y_va_cls, tree_va_scores),
+        },
+        "Decision Tree (Test)": {
+            "ROC-AUC": roc_auc(y_te_cls, tree_te_scores),
+            "PR-AUC": pr_auc(y_te_cls, tree_te_scores),
+        },
+        "Pegasos SVM (Val)": {
+            "ROC-AUC": roc_auc(y_va_cls, svm_va_scores),
+            "PR-AUC": pr_auc(y_va_cls, svm_va_scores),
+        },
+        "Pegasos SVM (Test)": {
+            "ROC-AUC": roc_auc(y_te_cls, svm_te_scores),
+            "PR-AUC": pr_auc(y_te_cls, svm_te_scores),
+        },
+    }
+    compare(val_test_auc_table)
+
+    plot_pr_curve(
+        {
+            "Decision Tree": (y_te_cls, tree_te_scores),
+            "Pegasos SVM": (y_te_cls, svm_te_scores),
+        },
+        title="Precision-Recall Curves on Test Set (Task B: Price Tier)",
+        save_path=os.path.join(save_dir, "pr_curve.png"),
+    )
+
+    # 4. Task A Regression & Residuals
+    print("\nFitting Task A Decision Tree Regressor (mse, depth=12, leaf=10)...")
+    tree_reg = DecisionTree(
+        task="regression",
+        criterion="mse",
+        max_depth=12,
+        min_samples_leaf=10,
+        random_state=dp.SEED,
+    ).fit(X_tr, y_tr_price.to_numpy(dtype=float))
+
+    sk_tree_reg = DecisionTreeRegressor(
+        criterion="squared_error",
+        max_depth=12,
+        min_samples_leaf=10,
+        random_state=dp.SEED,
+    ).fit(X_tr, y_tr_price.to_numpy(dtype=float))
+
+    y_te_arr = y_te_price.to_numpy(dtype=float)
+    pred_reg = tree_reg.predict(X_te)
+    pred_sk_reg = sk_tree_reg.predict(X_te)
+
+    plot_residuals(
+        y_te_arr,
+        pred_reg,
+        title="Decision Tree (Task A: Price Regression) Residual Analysis",
+        save_path=os.path.join(save_dir, "residuals_task_a.png"),
+    )
+
+    # 5. Error Analysis (Failure Mode Breakdown)
+    print("\n" + "=" * 70)
+    print(" PROBLEM 6 ERROR ANALYSIS (Failure Mode Breakdown)")
+    print("=" * 70)
+
+    residuals = y_te_arr - pred_reg
+    print("\n[Task A Regression Failure Modes]")
+    print("1. Top Luxury Outliers (Under-predictions: Actual >> Predicted):")
+    worst_under = np.argsort(residuals)[::-1][:5]
+    for idx in worst_under:
+        act_azn = np.expm1(y_te_arr[idx])
+        prd_azn = np.expm1(pred_reg[idx])
+        orig = te.iloc[idx]
+        loc = orig.get("location", "?")
+        cat = orig.get("category", "?")
+        print(
+            f"   Actual: {act_azn:12,.0f} AZN | Pred: {prd_azn:10,.0f} AZN | "
+            f"Area: {orig.get('area', '?')} | Cat: {cat} | Loc: {loc}"
+        )
+    print(
+        "   -> Why it fails: Massive luxury properties (>3M AZN) or Torpaq (land plots"
+    )
+    print(
+        "      where living area=0) suffer from tree bounded leaf means. Trees cannot"
+    )
+    print("      extrapolate beyond the highest training leaf average.")
+
+    print("\n2. Top Low-End Listing Anomalies (Over-predictions: Predicted >> Actual):")
+    worst_over = np.argsort(residuals)[:5]
+    for idx in worst_over:
+        act_azn = np.expm1(y_te_arr[idx])
+        prd_azn = np.expm1(pred_reg[idx])
+        orig = te.iloc[idx]
+        loc = orig.get("location", "?")
+        cat = orig.get("category", "?")
+        print(
+            f"   Actual: {act_azn:12,.0f} AZN | Pred: {prd_azn:10,.0f} AZN | "
+            f"Area: {orig.get('area', '?')} | Cat: {cat} | Loc: {loc}"
+        )
+    print("   -> Why it fails: Data noise / listing entry errors (e.g., monthly rental")
+    print("      or down payments posted under sale listings, e.g., 3,000-10,000 AZN).")
+
+    print("\n[Task B Classification Failure Modes & Confusion Matrices]")
+    pred_tree_cls = tree_cls.predict(X_te)
+    pred_svm_cls = svm.predict(X_te_svm)
+    y_te_cls_arr = y_te_cls.to_numpy(dtype=int)
+
+    cm_tree = confusion_matrix(y_te_cls_arr, pred_tree_cls)
+    cm_svm = confusion_matrix(y_te_cls_arr, pred_svm_cls)
+
+    print(
+        f"Decision Tree Confusion Matrix: TN={cm_tree[0,0]}, FP={cm_tree[0,1]}, FN={cm_tree[1,0]}, TP={cm_tree[1,1]}"
+    )
+    print(
+        f"Pegasos SVM   Confusion Matrix: TN={cm_svm[0,0]}, FP={cm_svm[0,1]}, FN={cm_svm[1,0]}, TP={cm_svm[1,1]}"
+    )
+
+    fp_tree = np.where((pred_tree_cls == 1) & (y_te_cls_arr == 0))[0]
+    fn_tree = np.where((pred_tree_cls == 0) & (y_te_cls_arr == 1))[0]
+
+    print(
+        f"\nTree False Positives (Predicted Premium, Actually Standard: {len(fp_tree)} cases):"
+    )
+    print(
+        "   -> Typical cause: Large properties in distant suburbs (Absheron/Khirdalan/Masazir)"
+    )
+    print(
+        "      or border properties whose log price sits just barely below the median threshold."
+    )
+
+    print(
+        f"\nTree False Negatives (Predicted Standard, Actually Premium: {len(fn_tree)} cases):"
+    )
+    print(
+        "   -> Typical cause: Small/1-room apartments in ultra-prime districts (Sabayil, Nizami St)"
+    )
+    print(
+        "      where high square-meter price compensates for low area, but low area triggers standard prediction."
+    )
+
+    # 6. Consolidated Results Table
+    print("\n" + "=" * 70)
+    print(" CONSOLIDATED RESULTS TABLE (Problem 6 Required Deliverable)")
+    print("=" * 70)
+
+    sk_tree_cls = DecisionTreeClassifier(
+        criterion="entropy",
+        max_depth=12,
+        min_samples_leaf=10,
+        random_state=dp.SEED,
+    ).fit(X_tr, y_tr_cls.to_numpy(dtype=int))
+    pred_sk_cls = sk_tree_cls.predict(X_te)
+    sk_cls_proba = sk_tree_cls.predict_proba(X_te)[:, 1]
+
+    all_models_table = {
+        "Custom Decision Tree": {
+            "Task A RMSE": rmse(y_te_arr, pred_reg),
+            "Task A MAE": mae(y_te_arr, pred_reg),
+            "Task A R2": r2(y_te_arr, pred_reg),
+            "Task B Acc": float(np.mean(pred_tree_cls == y_te_cls_arr)),
+            "Task B F1": precision_recall_f1(y_te_cls_arr, pred_tree_cls)[2],
+            "Task B ROC-AUC": roc_auc(y_te_cls_arr, tree_te_scores),
+            "Task B PR-AUC": pr_auc(y_te_cls_arr, tree_te_scores),
+        },
+        "Sklearn Decision Tree": {
+            "Task A RMSE": rmse(y_te_arr, pred_sk_reg),
+            "Task A MAE": mae(y_te_arr, pred_sk_reg),
+            "Task A R2": r2(y_te_arr, pred_sk_reg),
+            "Task B Acc": float(np.mean(pred_sk_cls == y_te_cls_arr)),
+            "Task B F1": precision_recall_f1(y_te_cls_arr, pred_sk_cls)[2],
+            "Task B ROC-AUC": roc_auc(y_te_cls_arr, sk_cls_proba),
+            "Task B PR-AUC": pr_auc(y_te_cls_arr, sk_cls_proba),
+        },
+        "Custom Pegasos SVM": {
+            "Task A RMSE": "---",
+            "Task A MAE": "---",
+            "Task A R2": "---",
+            "Task B Acc": float(np.mean(pred_svm_cls == y_te_cls_arr)),
+            "Task B F1": precision_recall_f1(y_te_cls_arr, pred_svm_cls)[2],
+            "Task B ROC-AUC": roc_auc(y_te_cls_arr, svm_te_scores),
+            "Task B PR-AUC": pr_auc(y_te_cls_arr, svm_te_scores),
+        },
+    }
+    compare(all_models_table)
+
+    print("Done!")
+    return all_models_table
+
+
+if __name__ == "__main__":
+    evaluate_all()
