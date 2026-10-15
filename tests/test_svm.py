@@ -91,6 +91,8 @@ def test_rff_svm_learns_xor_deterministically():
         "random_state": 12,
         "n_components": 256,
         "gamma": 1.0,
+        "use_rff": True,
+
     }
 
     first = PegasosSVM(**options).fit(X, y)
