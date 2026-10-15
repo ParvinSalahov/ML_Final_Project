@@ -167,23 +167,8 @@ def plot_feature_importances(
     top_n: int = 15,
     save_path: str = None,
 ) -> None:
-    """
-    Horizontal bar chart of the top-N most important features.
+    """Horizontal bar chart of the top-N most important features from DecisionTree.feature_importances_."""
 
-    Parameters
-    ----------
-    importances : 1-D array of shape (n_features,)
-        Normalized impurity-decrease importances (sum to 1.0).
-        Comes from DecisionTree.feature_importances_ after fit().
-    feature_names : list of str
-        Column names matching the feature order used during fit().
-    title : str
-        Chart title.
-    top_n : int
-        How many top features to display.
-    save_path : str or None
-        If given, save the figure here; otherwise show interactively.
-    """
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -240,23 +225,11 @@ def plot_svm_feature_weights(
 ) -> None:
     """
     Approximate per-input-feature importance for the Pegasos RFF SVM.
-
-    Because Pegasos + RFF maps X -> phi(X) before learning w, we cannot
-    directly read off input-feature weights.  Instead we project the learned
-    weight vector back through the RFF projection matrix Omega:
-
-        importance_j = |w|^T |Omega[:, j]|
-
-    where Omega has shape (n_features, n_components), so each column j gives
-    the RFF projection coefficients for input feature j.  This is a proxy
-    for how much each original feature drives the decision boundary.
-
-    Parameters
-    ----------
-    svm_model : fitted PegasosSVM instance
-    feature_names : list of str
-    title, top_n, save_path : same as plot_feature_importances
+    Projects the learned weight vector back through the RFF matrix Omega:
+        importance_j = |Omega[j, :]| . |w|
+    This is a proxy — direct weight reading is not possible with RFF.
     """
+
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -272,8 +245,8 @@ def plot_svm_feature_weights(
     else:
         # RFF SVM: rff_weights_ has shape (n_features, n_components)
         # importance_j = sum_k  |w_k| * |Omega[j, k]|
-        Omega = svm_model.rff_weights_          # (n_features, n_components)
-        raw = Omega.dot(np.abs(svm_model.w))    # (n_features,)
+        Omega = svm_model.rff_weights_  # (n_features, n_components)
+        raw = Omega.dot(np.abs(svm_model.w))  # (n_features,)
         raw = np.abs(raw)
 
     total = raw.sum()
