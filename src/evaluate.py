@@ -157,3 +157,161 @@ def compare(name_to_metrics: dict) -> None:
         print(row_str)
 
     print(separator + "\n")
+
+
+# --- Feature importances --------------------------------------
+def plot_feature_importances(
+    importances: np.ndarray,
+    feature_names: list,
+    title: str = "Decision Tree Feature Importances",
+    top_n: int = 15,
+    save_path: str = None,
+) -> None:
+    """
+    Horizontal bar chart of the top-N most important features.
+
+    Parameters
+    ----------
+    importances : 1-D array of shape (n_features,)
+        Normalized impurity-decrease importances (sum to 1.0).
+        Comes from DecisionTree.feature_importances_ after fit().
+    feature_names : list of str
+        Column names matching the feature order used during fit().
+    title : str
+        Chart title.
+    top_n : int
+        How many top features to display.
+    save_path : str or None
+        If given, save the figure here; otherwise show interactively.
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available — skipping feature importance plot.")
+        return
+
+    importances = np.asarray(importances, dtype=float)
+    feature_names = list(feature_names)
+
+    if len(importances) != len(feature_names):
+        raise ValueError(
+            f"importances length ({len(importances)}) != "
+            f"feature_names length ({len(feature_names)})"
+        )
+
+    # Sort descending, take top N, then reverse for horizontal bar chart
+    order = np.argsort(importances)[::-1][:top_n]
+    top_imp = importances[order][::-1]
+    top_names = [feature_names[i] for i in order][::-1]
+
+    fig, ax = plt.subplots(figsize=(9, max(4, top_n * 0.4 + 1)), dpi=150)
+    bars = ax.barh(top_names, top_imp, color="#4C72B0", edgecolor="white", height=0.7)
+
+    for bar, val in zip(bars, top_imp):
+        ax.text(
+            bar.get_width() + 0.002,
+            bar.get_y() + bar.get_height() / 2.0,
+            f"{val:.4f}",
+            va="center",
+            ha="left",
+            fontsize=8,
+        )
+
+    ax.set_xlabel("Normalized impurity decrease (sum = 1.0)")
+    ax.set_title(title)
+    ax.set_xlim(0, top_imp.max() * 1.18)
+    ax.grid(axis="x", linestyle="--", alpha=0.5)
+    fig.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+        print(f"Saved feature importance plot: {save_path}")
+    else:
+        plt.show()
+    plt.close(fig)
+
+
+def plot_svm_feature_weights(
+    svm_model,
+    feature_names: list,
+    title: str = "Pegasos SVM: Top Feature Contributions",
+    top_n: int = 15,
+    save_path: str = None,
+) -> None:
+    """
+    Approximate per-input-feature importance for the Pegasos RFF SVM.
+
+    Because Pegasos + RFF maps X -> phi(X) before learning w, we cannot
+    directly read off input-feature weights.  Instead we project the learned
+    weight vector back through the RFF projection matrix Omega:
+
+        importance_j = |w|^T |Omega[:, j]|
+
+    where Omega has shape (n_features, n_components), so each column j gives
+    the RFF projection coefficients for input feature j.  This is a proxy
+    for how much each original feature drives the decision boundary.
+
+    Parameters
+    ----------
+    svm_model : fitted PegasosSVM instance
+    feature_names : list of str
+    title, top_n, save_path : same as plot_feature_importances
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available — skipping SVM weight plot.")
+        return
+
+    if svm_model.w is None:
+        raise RuntimeError("SVM must be fitted before plotting weights.")
+
+    if not svm_model.use_rff:
+        # Linear SVM: weights map directly to input features
+        raw = np.abs(svm_model.w)
+    else:
+        # RFF SVM: rff_weights_ has shape (n_features, n_components)
+        # importance_j = sum_k  |w_k| * |Omega[j, k]|
+        Omega = svm_model.rff_weights_          # (n_features, n_components)
+        raw = Omega.dot(np.abs(svm_model.w))    # (n_features,)
+        raw = np.abs(raw)
+
+    total = raw.sum()
+    importances = raw / total if total > 0.0 else raw
+
+    feature_names = list(feature_names)
+    if len(importances) != len(feature_names):
+        raise ValueError(
+            f"importances length ({len(importances)}) != "
+            f"feature_names length ({len(feature_names)})"
+        )
+
+    order = np.argsort(importances)[::-1][:top_n]
+    top_imp = importances[order][::-1]
+    top_names = [feature_names[i] for i in order][::-1]
+
+    fig, ax = plt.subplots(figsize=(9, max(4, top_n * 0.4 + 1)), dpi=150)
+    bars = ax.barh(top_names, top_imp, color="#DD8452", edgecolor="white", height=0.7)
+
+    for bar, val in zip(bars, top_imp):
+        ax.text(
+            bar.get_width() + 0.002,
+            bar.get_y() + bar.get_height() / 2.0,
+            f"{val:.4f}",
+            va="center",
+            ha="left",
+            fontsize=8,
+        )
+
+    ax.set_xlabel("Normalized |w|·|Omega| contribution (proxy, sum = 1.0)")
+    ax.set_title(title)
+    ax.set_xlim(0, top_imp.max() * 1.18)
+    ax.grid(axis="x", linestyle="--", alpha=0.5)
+    fig.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+        print(f"Saved SVM weight plot: {save_path}")
+    else:
+        plt.show()
+    plt.close(fig)
