@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+from .svm import PegasosSVM
 
 # Ensure project root and src/ are in sys.path when run directly
 _current_dir = Path(__file__).resolve().parent
@@ -432,6 +433,151 @@ def run_tree_tuning() -> dict:
         "leaf_study": leaf_res,
     }
 
+def run_svm_tuning() -> dict:
+    """
+        Tune Pegasos SVM using validation data only.
 
+        Sweeps lambda and RFF gamma, records validation metrics and margin
+        diagnostics, and plots the selected model's objective history.
+    """
+    figures_dir = ensure_figures_dir("report/figures")
+
+    print("\nLoading data for SVM tuning...")
+    tr, va, _ = dp.prepare_data(seed=dp.SEED)
+
+    X_tr_df, y_tr_price, _, fit_info = dp.make_features(tr)
+    X_val_df, y_val_price, _, _ = dp.make_features(va, fit_info=fit_info)
+
+    # Derive the tier threshold from training prices only.
+    y_tr, tier_threshold = dp.make_tier_label(y_tr_price)
+    y_val, _ = dp.make_tier_label(y_val_price, threshold=tier_threshold)
+
+    # Fit scaling on training features, then apply those statistics to validation.
+    X_tr_scaled, X_val_scaled = dp.standardize(X_tr_df, X_val_df)
+    X_tr = X_tr_scaled.to_numpy(dtype=float)
+    X_val = X_val_scaled.to_numpy(dtype=float)
+    y_tr = y_tr.to_numpy(dtype=int)
+    y_val = y_val.to_numpy(dtype=int)
+
+    lambda_values = [1e-4, 1e-3, 1e-2]
+    gamma_values = [0.1, 1.0, 10.0]
+    n_epochs = 10
+    n_components = 256
+
+    results = []
+    for lambda_ in lambda_values:
+        for gamma in gamma_values:
+            model = PegasosSVM(
+                lambda_=lambda_,
+                n_epochs=n_epochs,
+                random_state=dp.SEED,
+                use_rff=True,
+                n_components=n_components,
+                gamma=gamma,
+            ).fit(X_tr, y_tr)
+
+            val_pred = model.predict(X_val)
+            val_scores = model.decision_function(X_val)
+            precision, recall, f1 = ev.precision_recall_f1(y_val, val_pred)
+            auc = ev.roc_auc(y_val, val_scores)
+
+            result = {
+                "lambda_": lambda_,
+                "gamma": gamma,
+                "model": model,
+                "precision": precision,
+                "recall": recall,
+                "f1": f1,
+                "auc": auc,
+                "weight_norm": model.weight_norm_,
+                "margin_width": model.margin_width_,
+            }
+            results.append(result)
+
+            print(
+                f"lambda={lambda_:.1e}, gamma={gamma:g} | "
+                f"Val F1={f1:.4f}, AUC={auc:.4f}, "
+                f"||w||={model.weight_norm_:.4f}, "
+                f"margin={model.margin_width_:.4f}"
+            )
+
+    # Select only from validation F1, using validation AUC to break ties.
+    best = max(results, key=lambda r: (r["f1"], r["auc"]))
+    best_model = best["model"]
+
+    # For this objective, lambda = 1 / (n * C).
+    equivalent_C = 1.0 / (len(y_tr) * best["lambda_"])
+
+    print("\nSelected SVM configuration (validation data only)")
+    print(f"  lambda:           {best['lambda_']:.1e}")
+    print(f"  approximate C:    {equivalent_C:.6g}")
+    print(f"  RFF gamma:        {best['gamma']:g}")
+    print(f"  epochs:           {n_epochs}")
+    print(f"  validation F1:    {best['f1']:.4f}")
+    print(f"  validation AUC:   {best['auc']:.4f}")
+    print(f"  weight norm:      {best['weight_norm']:.4f}")
+    print(f"  margin width:     {best['margin_width']:.4f}")
+    print(
+        f"  support vectors:  "
+        f"{len(best_model.support_vector_indices_)} / {len(y_tr)}"
+    )
+
+    # Plot how lambda/gamma choices trade validation F1 against margin width.
+    fig, ax = plt.subplots(figsize=(8, 5), dpi=300)
+    for gamma in gamma_values:
+        gamma_results = [r for r in results if r["gamma"] == gamma]
+        ax.plot(
+            [r["lambda_"] for r in gamma_results],
+            [r["f1"] for r in gamma_results],
+            marker="o",
+            label=f"gamma={gamma:g}",
+        )
+
+    ax.set_xscale("log")
+    ax.set_xlabel("Regularization lambda")
+    ax.set_ylabel("Validation F1")
+    ax.set_title("RFF Pegasos SVM: Validation F1 by lambda and gamma")
+    ax.grid(True, linestyle="--", alpha=0.6)
+    ax.legend()
+    fig.tight_layout()
+    tradeoff_path = os.path.join(figures_dir, "svm_lambda_gamma_validation.png")
+    fig.savefig(tradeoff_path)
+    plt.close(fig)
+    print(f"Saved plot: {tradeoff_path}")
+
+    # Show the selected configuration's objective across epochs.
+    plt.figure(figsize=(8, 5), dpi=300)
+    plt.plot(
+        range(len(best_model.objective_history_)),
+        best_model.objective_history_,
+        marker="o",
+    )
+    plt.xlabel("Epoch")
+    plt.ylabel("Regularized hinge-loss objective")
+    plt.title("Pegasos objective during training")
+    plt.grid(True, linestyle="--", alpha=0.6)
+    plt.tight_layout()
+    objective_path = os.path.join(figures_dir, "svm_objective_convergence.png")
+    plt.savefig(objective_path)
+    plt.close()
+    print(f"Saved plot: {objective_path}")
+
+    return {
+        "best_config": {
+            "lambda_": best["lambda_"],
+            "gamma": best["gamma"],
+            "n_epochs": n_epochs,
+            "use_rff": True,
+            "n_components": n_components,
+        },
+        "best_validation_f1": best["f1"],
+        "best_validation_auc": best["auc"],
+        "results": results,
+    }
 if __name__ == "__main__":
     run_tree_tuning()
+    run_svm_tuning()
+
+
+
+
