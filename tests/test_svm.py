@@ -43,7 +43,7 @@ def test_fit_learns_separable_data_deterministically():
         random_state=7,
     ).fit(X, y)
 
-    assert first.w.shape == (first.n_components,)
+    assert first.w.shape == (X.shape[1],)
     np.testing.assert_array_equal(first.w, second.w)
     assert first.b == second.b
 
