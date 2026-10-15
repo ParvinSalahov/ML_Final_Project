@@ -94,6 +94,7 @@ def main() -> None:
     X_va_svm = X_va_sc.to_numpy(dtype=float)
     X_te_svm = X_te_sc.to_numpy(dtype=float)
 
+    y_tr_arr = y_tr_price.to_numpy(dtype=float)
     y_te_arr = y_te_price.to_numpy(dtype=float)
     y_te_cls_arr = y_te_cls.to_numpy(dtype=int)
 
@@ -259,6 +260,16 @@ def main() -> None:
         },
     }
     bm.plot_benchmark_results(task_b_res, task_a_res, figures_dir=figures_dir)
+
+    if not quick_mode:
+        print(
+            "  - Running 5-fold cross-validation uncertainty estimation (Problem 5c)..."
+        )
+        bm.run_cross_validation_uncertainty(
+            X_tr, y_tr_cls.to_numpy(dtype=int), y_tr_arr, n_splits=5
+        )
+    else:
+        print("  - Skipping 5-fold CV uncertainty estimation (--quick active).")
 
     # -------------------------------------------------------------------------
     # 5. Problem 4 Tuning Plots (or skipped in quick mode)
