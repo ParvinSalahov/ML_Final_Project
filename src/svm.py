@@ -188,6 +188,20 @@ class PegasosSVM:
 
         self.w = weights
         self.b = bias
+        scores = transformed @ self.w + self.b
+        self.training_margins_ = labels * scores
+
+        self.support_vector_indices_ = np.flatnonzero(
+            self.training_margins_ <= 1.0
+        )
+
+        self.weight_norm_ = float(np.linalg.norm(self.w))
+
+        if self.weight_norm_ > 0:
+            self.margin_width_ = 2.0 / self.weight_norm_
+        else:
+            self.margin_width_ = float("inf")
+
         return self
 
     def decision_function(self, X):

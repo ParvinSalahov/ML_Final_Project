@@ -126,3 +126,25 @@ def test_objective_history_is_recorded():
 
     assert len(model.objective_history_) == model.n_epochs + 1
     assert np.all(np.isfinite(model.objective_history_))
+
+def test_fit_reports_margin_and_support_vectors():
+    X = np.array([[-2.0], [-1.0], [1.0], [2.0]])
+    y = np.array([0, 0, 1, 1])
+
+    model = PegasosSVM(
+        lambda_=0.01,
+        n_epochs=20,
+        random_state=7,
+    ).fit(X, y)
+
+    assert model.weight_norm_ > 0
+    assert model.margin_width_ == pytest.approx(
+        2.0 / model.weight_norm_
+    )
+    assert model.training_margins_.shape == (len(y),)
+
+    expected = np.flatnonzero(model.training_margins_ <= 1.0)
+    np.testing.assert_array_equal(
+        model.support_vector_indices_,
+        expected,
+    )
