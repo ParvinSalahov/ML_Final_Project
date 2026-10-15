@@ -33,13 +33,13 @@ def test_fit_learns_separable_data_deterministically():
 
     first = PegasosSVM(
         lambda_=0.01,
-        n_iters=1000,
+        n_epochs=1000,
         random_state=7,
     ).fit(X, y)
 
     second = PegasosSVM(
         lambda_=0.01,
-        n_iters=1000,
+        n_epochs=1000,
         random_state=7,
     ).fit(X, y)
 
@@ -54,7 +54,7 @@ def test_predict_returns_original_labels():
 
     model = PegasosSVM(
         lambda_=0.01,
-        n_iters=1000,
+        n_epochs=1000,
         random_state=7,
     ).fit(X, y)
 
@@ -68,7 +68,7 @@ def test_prediction_requires_fitted_model():
 
 
 def test_prediction_rejects_wrong_feature_count():
-    model = PegasosSVM(n_iters=10).fit(
+    model = PegasosSVM(n_epochs=10).fit(
         np.array([[-1.0], [1.0]]),
         np.array([0, 1]),
     )
@@ -87,7 +87,7 @@ def test_rff_svm_learns_xor_deterministically():
 
     options = {
         "lambda_": 0.01,
-        "n_iters": 10000,
+        "n_epochs": 10000,
         "random_state": 12,
         "n_components": 256,
         "gamma": 1.0,
@@ -112,3 +112,17 @@ def test_constructor_rejects_invalid_n_components(n_components):
 def test_constructor_rejects_invalid_gamma(gamma):
     with pytest.raises(ValueError, match="gamma"):
         PegasosSVM(gamma=gamma)
+
+def test_objective_history_is_recorded():
+    X = np.array([[-2.0], [-1.0], [1.0], [2.0]])
+    y = np.array([0, 0, 1, 1])
+
+    model = PegasosSVM(
+        lambda_=0.01,
+        n_epochs=20,
+        learning_rate_scale=1.0,
+        random_state=7,
+    ).fit(X, y)
+
+    assert len(model.objective_history_) == model.n_epochs + 1
+    assert np.all(np.isfinite(model.objective_history_))

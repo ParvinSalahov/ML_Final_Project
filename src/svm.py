@@ -27,9 +27,6 @@ Remember to STANDARDIZE features (see data_prep.standardize) before training.
 """
 
 from __future__ import annotations
-from pyexpat import features
-
-from matplotlib.pylab import gamma
 import numpy as np
 
 
@@ -37,8 +34,10 @@ class PegasosSVM:
     def __init__(
         self,
         lambda_: float = 1e-4,     # regularisation strength (1/(n*C) flavour)
-        n_iters: int = 20_000,     # number of sub-gradient steps
         random_state: int = 42,
+        n_epochs: int = 20,
+        learning_rate_scale: float = 1.0,
+        use_rff: bool = True,
         n_components: int = 256,
         gamma: float = 1.0,
         
@@ -47,10 +46,16 @@ class PegasosSVM:
             raise ValueError("lambda_ must be a positive finite number")
 
         if (
-            isinstance(n_iters, bool)
-            or not isinstance(n_iters, (int, np.integer))
-            or n_iters < 1):
-            raise ValueError("n_iters must be a positive integer")
+        isinstance(n_epochs, bool)
+        or not isinstance(n_epochs, (int, np.integer))
+        or n_epochs < 1):
+            raise ValueError("n_epochs must be a positive integer")
+
+        if not np.isfinite(learning_rate_scale) or learning_rate_scale <= 0:
+            raise ValueError("learning_rate_scale must be a positive finite number")
+
+        if not isinstance(use_rff, bool):
+            raise ValueError("use_rff must be a boolean")
         if (
             isinstance(n_components, bool)
             or not isinstance(n_components, (int, np.integer))
@@ -60,17 +65,25 @@ class PegasosSVM:
         if not np.isfinite(gamma) or gamma <= 0:
             raise ValueError("gamma must be a positive finite number")
         self.lambda_ = lambda_
-        self.n_iters = n_iters
+        self.n_epochs = n_epochs
+        self.learning_rate_scale = learning_rate_scale
         self.random_state = random_state
-        self.w = None              # weight vector
-        self.b = 0.0  
-        self.classes_: np.ndarray | None = None
+        self.use_rff = use_rff
         self.n_components = n_components
         self.gamma = gamma
+
+        self.w: np.ndarray | None = None
+        self.b = 0.0
+        self.classes_: np.ndarray | None = None
         self.n_features_in_: int | None = None
         self.rff_weights_: np.ndarray | None = None
         self.rff_offsets_: np.ndarray | None = None
 
+        self.objective_history_: list[float] = []
+        self.support_vector_indices_: np.ndarray | None = None
+        self.training_margins_: np.ndarray | None = None
+        self.weight_norm_: float | None = None
+        self.margin_width_: float | None = None
     
     def _to_pm1(self,y):
         labels = np.asarray(y)
@@ -92,13 +105,23 @@ class PegasosSVM:
         return np.where(labels == classes[0], -1.0, 1.0)
 
     def _transform(self, X):
+        if not self.use_rff:
+            return X
+
         if self.rff_weights_ is None or self.rff_offsets_ is None:
             raise RuntimeError("Random Fourier features are not initialized")
 
         return np.sqrt(2.0 / self.n_components) * np.cos(
             X @ self.rff_weights_ + self.rff_offsets_
         )
+    def _objective(self, X_transformed, y_pm1, weights, bias):
+        scores = X_transformed @ weights + bias
+        hinge_loss = np.maximum(0.0, 1.0 - y_pm1 * scores)
 
+        return float(
+            0.5 * self.lambda_ * np.dot(weights, weights)
+            + np.mean(hinge_loss)
+        )
     def fit(self, X, y):
         features = np.asarray(X, dtype=float)
 
@@ -116,41 +139,52 @@ class PegasosSVM:
         if labels.shape[0] != features.shape[0]:
             raise ValueError("X and y must contain the same number of samples")
 
-        feature_seed, sample_seed = np.random.SeedSequence(
-            self.random_state
-        ).spawn(2)
-
-        feature_rng = np.random.default_rng(feature_seed)
-        sample_rng = np.random.default_rng(sample_seed)
-
         self.n_features_in_ = features.shape[1]
-        self.rff_weights_ = feature_rng.normal(
-            scale=np.sqrt(2.0 * self.gamma),
-            size=(self.n_features_in_, self.n_components),
-        )
-        self.rff_offsets_ = feature_rng.uniform(
-            0.0,
-            2.0 * np.pi,
-            self.n_components,
-        )
 
-        features = self._transform(features)
+        sample_rng = np.random.default_rng(self.random_state)
 
-        weights = np.zeros(self.n_components, dtype=float)
+        if self.use_rff:
+            feature_rng = np.random.default_rng(self.random_state + 1)
+            self.rff_weights_ = feature_rng.normal(
+                scale=np.sqrt(2.0 * self.gamma),
+                size=(self.n_features_in_, self.n_components),
+            )
+            self.rff_offsets_ = feature_rng.uniform(
+                0.0,
+                2.0 * np.pi,
+                self.n_components,
+            )
+        else:
+            self.rff_weights_ = None
+            self.rff_offsets_ = None
+
+        transformed = self._transform(features)
+        weights = np.zeros(transformed.shape[1], dtype=float)
         bias = 0.0
 
-        for step in range(1, self.n_iters + 1):
-            index = sample_rng.integers(features.shape[0])
-            x_i = features[index]
-            y_i = labels[index]
-            eta = 1.0 / (self.lambda_ * step)
+        self.objective_history_ = [
+            self._objective(transformed, labels, weights, bias)
+        ]
 
-            margin = y_i * (np.dot(weights, x_i) + bias)
+        step = 0
 
-            weights *= 1.0 - eta * self.lambda_
-            if margin < 1.0:
-                weights += eta * y_i * x_i
-                bias += eta * y_i
+        for _ in range(self.n_epochs):
+            for index in sample_rng.permutation(transformed.shape[0]):
+                step += 1
+                x_i = transformed[index]
+                y_i = labels[index]
+
+                eta = self.learning_rate_scale / (self.lambda_ * step)
+                margin = y_i * (np.dot(weights, x_i) + bias)
+
+                weights *= 1.0 - eta * self.lambda_
+                if margin < 1.0:
+                    weights += eta * y_i * x_i
+                    bias += eta * y_i
+
+            self.objective_history_.append(
+                self._objective(transformed, labels, weights, bias)
+            )
 
         self.w = weights
         self.b = bias
