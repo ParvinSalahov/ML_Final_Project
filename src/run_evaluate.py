@@ -2,7 +2,7 @@
 _run_evaluate.py -- Runner for Problem 6b feature importance plots.
 
 Usage:
-    python -m src._run_evaluate
+    python -m src.run_evaluate
 
 Generates:
     report/figures/tree_feature_importances.png
@@ -22,9 +22,15 @@ print("Loading data...")
 tr, va, te = dp.prepare_data(seed=dp.SEED)
 X_tr_df, y_tr_price, feat_names, fit_info = dp.make_features(tr)
 X_va_df, y_va_price, _, _ = dp.make_features(va, fit_info=fit_info)
+X_te_df, y_te_price, _, _ = dp.make_features(te, fit_info=fit_info)
 
 y_tr_cls, threshold = dp.make_tier_label(y_tr_price)
+y_va_cls, _ = dp.make_tier_label(y_va_price, threshold=threshold)
+y_te_cls, _ = dp.make_tier_label(y_te_price, threshold=threshold)
+
 X_tr = X_tr_df.to_numpy(dtype=float)
+X_va = X_va_df.to_numpy(dtype=float)
+X_te = X_te_df.to_numpy(dtype=float)
 
 # --- Decision Tree feature importances ---
 print("\nFitting Decision Tree (entropy, depth=12, leaf=10)...")
@@ -51,8 +57,11 @@ ev.plot_feature_importances(
 
 # --- Pegasos SVM feature weights ---
 print("\nFitting Pegasos SVM (lambda=1e-4, gamma=0.1, 30 epochs)...")
-X_tr_scaled, _ = dp.standardize(X_tr_df, X_va_df)
+X_tr_scaled, X_va_scaled = dp.standardize(X_tr_df, X_va_df)
+_, X_te_scaled = dp.standardize(X_tr_df, X_te_df)
 X_tr_svm = X_tr_scaled.to_numpy(dtype=float)
+X_va_svm = X_va_scaled.to_numpy(dtype=float)
+X_te_svm = X_te_scaled.to_numpy(dtype=float)
 
 svm = PegasosSVM(
     lambda_=1e-4,
@@ -71,4 +80,41 @@ ev.plot_svm_feature_weights(
     save_path="report/figures/svm_feature_weights.png",
 )
 
-print("\nDone. Plots saved to report/figures/")
+# --- Problem 6a: PR-AUC Evaluation & Curves ---
+print("\nEvaluating PR-AUC & ROC-AUC for Task B (Price Tier)...")
+tree_va_scores = tree.predict_proba(X_va)[:, 1]
+tree_te_scores = tree.predict_proba(X_te)[:, 1]
+
+svm_va_scores = svm.decision_function(X_va_svm)
+svm_te_scores = svm.decision_function(X_te_svm)
+
+metrics = {
+    "Decision Tree (Val)": {
+        "ROC-AUC": ev.roc_auc(y_va_cls, tree_va_scores),
+        "PR-AUC": ev.pr_auc(y_va_cls, tree_va_scores),
+    },
+    "Decision Tree (Test)": {
+        "ROC-AUC": ev.roc_auc(y_te_cls, tree_te_scores),
+        "PR-AUC": ev.pr_auc(y_te_cls, tree_te_scores),
+    },
+    "Pegasos SVM (Val)": {
+        "ROC-AUC": ev.roc_auc(y_va_cls, svm_va_scores),
+        "PR-AUC": ev.pr_auc(y_va_cls, svm_va_scores),
+    },
+    "Pegasos SVM (Test)": {
+        "ROC-AUC": ev.roc_auc(y_te_cls, svm_te_scores),
+        "PR-AUC": ev.pr_auc(y_te_cls, svm_te_scores),
+    },
+}
+ev.compare(metrics)
+
+ev.plot_pr_curve(
+    {
+        "Decision Tree": (y_te_cls, tree_te_scores),
+        "Pegasos SVM": (y_te_cls, svm_te_scores),
+    },
+    title="Precision-Recall Curves on Test Set (Task B: Price Tier)",
+    save_path="report/figures/pr_curve.png",
+)
+
+print("\nDone. All Problem 6 plots saved to report/figures/")

@@ -116,6 +116,93 @@ def roc_auc(y_true, scores) -> float:
     return float(auc)
 
 
+def pr_curve(y_true, scores):
+    """
+    Compute Precision-Recall pairs for different probability/margin thresholds.
+    Returns (precision, recall, thresholds).
+    """
+    y_true = np.asarray(y_true)
+    scores = np.asarray(scores)
+
+    n_pos = np.sum(y_true == 1)
+    if n_pos == 0:
+        return np.array([0.0, 1.0]), np.array([1.0, 0.0]), np.array([])
+
+    desc_order = np.argsort(scores)[::-1]
+    y_true_sorted = y_true[desc_order]
+    scores_sorted = scores[desc_order]
+
+    distinct_indices = np.where(np.diff(scores_sorted))[0]
+    threshold_idxs = np.r_[distinct_indices, y_true.size - 1]
+
+    tps = np.cumsum(y_true_sorted == 1)[threshold_idxs]
+    fps = 1 + threshold_idxs - tps
+
+    precision = tps / (tps + fps)
+    recall = tps / n_pos
+
+    precision = np.r_[precision[::-1], 1.0]
+    recall = np.r_[recall[::-1], 0.0]
+    thresholds = scores_sorted[threshold_idxs][::-1]
+    return precision, recall, thresholds
+
+
+def pr_auc(y_true, scores) -> float:
+    """
+    Compute Area Under the Precision-Recall Curve (Average Precision).
+    Uses the uninterpolated step-function integral:
+        AP = sum_n (R_n - R_{n-1}) * P_n
+    """
+    y_true = np.asarray(y_true)
+    scores = np.asarray(scores)
+    if np.sum(y_true == 1) == 0:
+        return 0.0
+
+    precision, recall, _ = pr_curve(y_true, scores)
+    return float(np.sum(-np.diff(recall) * precision[:-1]))
+
+
+def plot_pr_curve(
+    curves: dict,
+    title: str = "Precision-Recall Curves (Task B: Price Tier)",
+    save_path: str = None,
+) -> None:
+    """Plot Precision-Recall curves for one or more models."""
+    try:
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("matplotlib not available — skipping PR curve plot.")
+        return
+
+    fig, ax = plt.subplots(figsize=(7, 6), dpi=150)
+    for name, item in curves.items():
+        if isinstance(item, tuple) and len(item) == 2:
+            y_t, sc = item
+            prec, rec, _ = pr_curve(y_t, sc)
+            auc_val = pr_auc(y_t, sc)
+        elif isinstance(item, tuple) and len(item) == 3:
+            prec, rec, auc_val = item
+        else:
+            continue
+        ax.plot(rec, prec, lw=2, label=f"{name} (PR-AUC = {auc_val:.4f})")
+
+    ax.set_xlabel("Recall")
+    ax.set_ylabel("Precision")
+    ax.set_xlim([0.0, 1.02])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_title(title)
+    ax.grid(True, linestyle="--", alpha=0.5)
+    ax.legend(loc="lower left")
+    fig.tight_layout()
+
+    if save_path:
+        fig.savefig(save_path, bbox_inches="tight")
+        print(f"Saved PR curve plot: {save_path}")
+    else:
+        plt.show()
+    plt.close(fig)
+
+
 # --- Comparison helper ------------------------------------------------------
 def compare(name_to_metrics: dict) -> None:
     """
