@@ -50,6 +50,26 @@ UNUSED_COLUMNS: list[str] = [
     "shop_title"
 ]
 
+OUTLIER_COLUMNS = ['price', 'area', 'land_area']
+
+category_rename_map = {
+    'category_Həyət evi/Bağ evi': 'category_country_house',
+    'category_Torpaq': 'category_land',
+    'category_Köhnə tikili': 'category_old_building',
+    'category_Yeni tikili': 'category_new_building',
+    'category_Obyekt': 'category_commercial', 
+    'category_Ofis': 'category_office',
+    'category_Qaraj': 'category_garage'
+}
+
+city_rename_map = {
+    'city_bakı': 'city_baku',
+    'city_xırdalan': 'city_khirdalan',
+    'city_xaçmaz': 'city_khachmaz',
+    'city_astara': 'city_astara',
+    'city_sumqayıt': 'city_sumgayit'
+}
+
 
 def load_raw(path: str = DATA_PATH):
     """Read the raw CSV into a DataFrame (keep UTF-8). Return it unmodified."""
@@ -91,12 +111,6 @@ def clean(df):
     mask = (df['Kateqoriya'] == 'Həyət evi/Bağ evi') & (df['Otaq sayı'].isna())
     df.loc[mask, 'Otaq sayı'] = df[mask].apply(tt.get_rooms_from_row, axis=1)
 
-    mask = df['Otaq sayı'].isna() & df['area'].notna()
-    df.loc[mask, 'Otaq sayı'] = df[mask].apply(
-    lambda row: tt.impute_rooms_byarea(row, df), 
-    axis=1
-    )
-
     mask = (df['Kateqoriya'] == 'Torpaq')
     df.loc[mask & df['land_area'].isna(), 'land_area'] = df.loc[mask, 'area']
 
@@ -127,58 +141,80 @@ def clean(df):
         df = df.drop(columns=[cols])
 
     df = tt.handle_duplicates_and_average_price(df)
-    outlier_cols = ['price', 'area', 'land_area']
-    df = tt.remove_outliers_iqr(df, columns=[col for col in outlier_cols if col in df.columns], multiplier=1.5)
 
     return df
 
 
-def make_features(df):
+def impute_rooms(df, ref):
+    df = df.copy()
+    mask = df['rooms'].isna() & df['area'].notna()
+    if mask.any():
+        df.loc[mask, 'rooms'] = df[mask].apply(
+            lambda row: tt.impute_rooms_byarea(row, ref, room_col='rooms', cat_col='category'),
+            axis=1
+        )
+    return df
+
+
+def prepare_data(path: str = DATA_PATH, seed: int = SEED):
+    df = clean(load_raw(path))
+
+    tr, _, va, _, te, _ = train_val_test_split(df, df['price'], seed=seed)
+
+    ref = tr.copy()
+    tr = impute_rooms(tr, ref)
+    va = impute_rooms(va, ref)
+    te = impute_rooms(te, ref)
+
+    bounds = tt.fit_outlier_bounds(tr, OUTLIER_COLUMNS, multiplier=1.5)
+    tr = tt.remove_outliers_iqr(tr, OUTLIER_COLUMNS, bounds=bounds)
+    va = tt.remove_outliers_iqr(va, OUTLIER_COLUMNS, bounds=bounds, apply_bounds=False)
+    te = tt.remove_outliers_iqr(te, OUTLIER_COLUMNS, bounds=bounds, apply_bounds=False)
+
+    return tr, va, te
+
+
+def make_features(df, fit_info=None):
     """
     Turn the cleaned frame into a numeric design matrix.
       - encode categoricals (one-hot / ordinal — your choice, justify it),
       - assemble X (features) and y (target `price`).
     Return (X, y, feature_names).
     """
+    df = df.copy()
+
     binary_columns = ['repair', 'bill_of_sale', 'mortgage']
     for col in binary_columns:
         if col in df.columns:
             df[col] = df[col].apply(tt.convert_to_binary)
 
-    df = pd.get_dummies(df, columns=['city', 'category'], drop_first=False, dtype=int)
+    if fit_info is None:
+        fit_info = {
+            'freq': {
+                col: df[col].value_counts(normalize=True)
+                for col in ['location', 'address'] if col in df.columns
+            }
+        }
 
-    for col in ['location', 'address']:
+    for col, freq_map in fit_info['freq'].items():
         if col in df.columns:
-            freq_map = df[col].value_counts(normalize=True)
             df[col] = df[col].map(freq_map).fillna(0)
 
-    category_rename_map = {
-    'category_Həyət evi/Bağ evi': 'category_country_house',
-    'category_Torpaq': 'category_land',
-    'category_Köhnə tikili': 'category_old_building',
-    'category_Yeni tikili': 'category_new_building',
-    'category_Obyekt': 'category_commercial', 
-    'category_Ofis': 'category_office',
-    'category_Qaraj': 'category_garage'
-    }
+    df = pd.get_dummies(df, columns=['city', 'category'], drop_first=False, dtype=int)
 
     df = df.rename(columns=category_rename_map)
-
-    city_rename_map = {
-        'city_bakı': 'city_baku',
-        'city_xırdalan': 'city_khirdalan',
-        'city_xaçmaz': 'city_khachmaz',
-        'city_astara': 'city_astara',
-        'city_sumqayıt': 'city_sumgayit'
-    }
-
     df = df.rename(columns=city_rename_map)
 
     y = np.log1p(df['price'])
     X = df.drop(columns=['price'])
-    feature_names = X.columns.tolist()
+
+    if 'cols' not in fit_info:
+        fit_info['cols'] = X.columns.tolist()
+    X = X.reindex(columns=fit_info['cols'], fill_value=0)
+
+    feature_names = fit_info['cols']
     
-    return X, y, feature_names
+    return X, y, feature_names, fit_info
 
 
 def make_tier_label(y_price, threshold=None):

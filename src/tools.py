@@ -104,8 +104,8 @@ def handle_duplicates_and_average_price(df, price_col='price'):
     print(f"Row count after handling duplicates: {len(df)}")
     return df
 
-def remove_outliers_iqr(df, columns, multiplier=1.5):
-    mask = pd.Series(True, index=df.index)
+def fit_outlier_bounds(df, columns, multiplier=1.5):
+    bounds = {}
     
     for col in columns:
         if col not in df.columns:
@@ -123,7 +123,26 @@ def remove_outliers_iqr(df, columns, multiplier=1.5):
         lower_bound = q1 - (multiplier * iqr)
         upper_bound = q3 + (multiplier * iqr)
         
-        col_mask = (df[col] == 0) | ((df[col] >= lower_bound) & (df[col] <= upper_bound))
+        bounds[col] = (lower_bound, upper_bound)
+        
+    return bounds
+
+def remove_outliers_iqr(df, columns, multiplier=1.5, bounds=None, apply_bounds=True):
+    if bounds is None:
+        bounds = fit_outlier_bounds(df, columns, multiplier)
+    
+    mask = pd.Series(True, index=df.index)
+    
+    for col in columns:
+        if col not in df.columns or col not in bounds:
+            continue
+            
+        lower_bound, upper_bound = bounds[col]
+        
+        if apply_bounds:
+            col_mask = (df[col] == 0) | ((df[col] >= lower_bound) & (df[col] <= upper_bound))
+        else:
+            col_mask = df[col].notna()
         mask = mask & col_mask
         
     df_filtered = df[mask].reset_index(drop=True)
