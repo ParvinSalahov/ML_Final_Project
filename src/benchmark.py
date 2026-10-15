@@ -18,6 +18,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 
+from sklearn.linear_model import SGDClassifier
+from sklearn.model_selection import StratifiedKFold
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
+
 _current_dir = Path(__file__).resolve().parent
 _project_root = _current_dir.parent
 for _p in [str(_project_root), str(_current_dir)]:
@@ -28,11 +34,13 @@ try:
     from . import data_prep as dp
     from .decision_tree import DecisionTree
     from . import evaluate as ev
+    from .svm import PegasosSVM
 except ImportError:
     try:
         from src import data_prep as dp
         from src.decision_tree import DecisionTree
         from src import evaluate as ev
+        from src.svm import PegasosSVM
     except ImportError:
         import data_prep as dp
         from decision_tree import DecisionTree
@@ -413,6 +421,306 @@ def plot_benchmark_results(
     return fig_path
 
 
+def _svm_classification_metrics(y_true, y_pred, scores) -> dict:
+    precision, recall, f1 = ev.precision_recall_f1(y_true, y_pred)
+    return {
+        "Accuracy": float(np.mean(y_pred == y_true)),
+        "Precision": float(precision),
+        "Recall": float(recall),
+        "F1": float(f1),
+        "ROC-AUC": float(ev.roc_auc(y_true, scores)),
+    }
+
+
+def run_svm_cross_validation(
+    X: np.ndarray,
+    y: np.ndarray,
+    lambda_: float = 1e-3,
+    gamma: float = 1.0,
+    n_epochs: int = 10,
+    n_components: int = 256,
+    n_splits: int = 5,
+) -> dict:
+    """
+    Estimate Task B SVM metrics as mean ± standard deviation across folds.
+    Scaling is fitted separately on each training fold.
+    """
+    splitter = StratifiedKFold(
+        n_splits=n_splits,
+        shuffle=True,
+        random_state=dp.SEED,
+    )
+
+    model_scores = {
+        "Pegasos RFF": {"F1": [], "ROC-AUC": []},
+        "SVC RBF": {"F1": [], "ROC-AUC": []},
+        "SGD hinge": {"F1": [], "ROC-AUC": []},
+    }
+
+    for fold, (train_idx, val_idx) in enumerate(splitter.split(X, y), start=1):
+        X_fold_train = X[train_idx]
+        X_fold_val = X[val_idx]
+        y_fold_train = y[train_idx]
+        y_fold_val = y[val_idx]
+
+        # The custom model receives features standardized using this fold's
+        # training statistics only.
+        custom_scaler = StandardScaler()
+        X_fold_train_scaled = custom_scaler.fit_transform(X_fold_train)
+        X_fold_val_scaled = custom_scaler.transform(X_fold_val)
+
+        custom_model = PegasosSVM(
+            lambda_=lambda_,
+            n_epochs=n_epochs,
+            random_state=dp.SEED + fold,
+            use_rff=True,
+            n_components=n_components,
+            gamma=gamma,
+        ).fit(X_fold_train_scaled, y_fold_train)
+
+        custom_pred = custom_model.predict(X_fold_val_scaled)
+        custom_scores = custom_model.decision_function(X_fold_val_scaled)
+        custom_metrics = _svm_classification_metrics(
+            y_fold_val, custom_pred, custom_scores
+        )
+        model_scores["Pegasos RFF"]["F1"].append(custom_metrics["F1"])
+        model_scores["Pegasos RFF"]["ROC-AUC"].append(custom_metrics["ROC-AUC"])
+
+        # For the stated primal objective, lambda = 1 / (n * C).
+        svc_C = 1.0 / (len(y_fold_train) * lambda_)
+
+        svc_pipeline = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                (
+                    "svc",
+                    SVC(
+                        kernel="rbf",
+                        C=svc_C,
+                        gamma=gamma,
+                        random_state=dp.SEED,
+                    ),
+                ),
+            ]
+        )
+        svc_pipeline.fit(X_fold_train, y_fold_train)
+        svc_pred = svc_pipeline.predict(X_fold_val)
+        svc_scores = svc_pipeline.decision_function(X_fold_val)
+        svc_metrics = _svm_classification_metrics(
+            y_fold_val, svc_pred, svc_scores
+        )
+        model_scores["SVC RBF"]["F1"].append(svc_metrics["F1"])
+        model_scores["SVC RBF"]["ROC-AUC"].append(svc_metrics["ROC-AUC"])
+
+        sgd_pipeline = Pipeline(
+            [
+                ("scaler", StandardScaler()),
+                (
+                    "sgd",
+                    SGDClassifier(
+                        loss="hinge",
+                        alpha=lambda_,
+                        max_iter=5000,
+                        tol=1e-4,
+                        random_state=dp.SEED,
+                    ),
+                ),
+            ]
+        )
+        sgd_pipeline.fit(X_fold_train, y_fold_train)
+        sgd_pred = sgd_pipeline.predict(X_fold_val)
+        sgd_scores = sgd_pipeline.decision_function(X_fold_val)
+        sgd_metrics = _svm_classification_metrics(
+            y_fold_val, sgd_pred, sgd_scores
+        )
+        model_scores["SGD hinge"]["F1"].append(sgd_metrics["F1"])
+        model_scores["SGD hinge"]["ROC-AUC"].append(sgd_metrics["ROC-AUC"])
+
+        print(
+            f"Fold {fold}/{n_splits} | "
+            f"Pegasos F1={custom_metrics['F1']:.4f}, "
+            f"SVC F1={svc_metrics['F1']:.4f}, "
+            f"SGD F1={sgd_metrics['F1']:.4f}"
+        )
+
+    summary = {}
+    print("\nSVM cross-validation results (mean ± std)")
+    for model_name, metrics in model_scores.items():
+        summary[model_name] = {}
+        for metric_name, values in metrics.items():
+            mean = float(np.mean(values))
+            std = float(np.std(values))
+            summary[model_name][metric_name] = (mean, std)
+            print(f"  {model_name} {metric_name}: {mean:.4f} ± {std:.4f}")
+
+    return summary
+
+
+def run_svm_benchmark(
+    lambda_: float = 1e-3,
+    gamma: float = 1.0,
+    n_epochs: int = 10,
+    n_components: int = 256,
+    n_splits: int = 5,
+) -> dict:
+    """
+    Compare the from-scratch RFF Pegasos SVM with sklearn SVC and SGDClassifier.
+    Hyperparameters should come from validation tuning, not the test set.
+    """
+    print("\nPreparing data for SVM benchmark...")
+    tr, va, te = dp.prepare_data(seed=dp.SEED)
+
+    # Fit feature encoding on training data. Reuse the same columns for val/test.
+    X_tr_df, y_tr_price, _, fit_info = dp.make_features(tr)
+    X_val_df, y_val_price, _, _ = dp.make_features(va, fit_info=fit_info)
+    X_te_df, y_te_price, _, _ = dp.make_features(te, fit_info=fit_info)
+
+    # Derive Task B's threshold from training prices only.
+    y_tr, tier_threshold = dp.make_tier_label(y_tr_price)
+    y_val, _ = dp.make_tier_label(y_val_price, threshold=tier_threshold)
+    y_te, _ = dp.make_tier_label(y_te_price, threshold=tier_threshold)
+
+    # Use train and validation data for cross-validation/model fitting.
+    X_trainval = np.concatenate(
+        [
+            X_tr_df.to_numpy(dtype=float),
+            X_val_df.to_numpy(dtype=float),
+        ],
+        axis=0,
+    )
+    y_trainval = np.concatenate(
+        [
+            y_tr.to_numpy(dtype=int),
+            y_val.to_numpy(dtype=int),
+        ],
+        axis=0,
+    )
+    X_test = X_te_df.to_numpy(dtype=float)
+    y_test = y_te.to_numpy(dtype=int)
+
+    cv_results = run_svm_cross_validation(
+        X_trainval,
+        y_trainval,
+        lambda_=lambda_,
+        gamma=gamma,
+        n_epochs=n_epochs,
+        n_components=n_components,
+        n_splits=n_splits,
+    )
+
+    # Scale custom-model features using only training/validation data.
+    scaler = StandardScaler()
+    X_trainval_scaled = scaler.fit_transform(X_trainval)
+    X_test_scaled = scaler.transform(X_test)
+
+    custom_model = PegasosSVM(
+        lambda_=lambda_,
+        n_epochs=n_epochs,
+        random_state=dp.SEED,
+        use_rff=True,
+        n_components=n_components,
+        gamma=gamma,
+    )
+
+    start = time.time()
+    custom_model.fit(X_trainval_scaled, y_trainval)
+    custom_fit_time = time.time() - start
+
+    start = time.time()
+    custom_pred = custom_model.predict(X_test_scaled)
+    custom_predict_time = time.time() - start
+    custom_scores = custom_model.decision_function(X_test_scaled)
+
+    # Approximate conversion from the Pegasos lambda to sklearn's C.
+    svc_C = 1.0 / (len(y_trainval) * lambda_)
+
+    svc_pipeline = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            (
+                "svc",
+                SVC(
+                    kernel="rbf",
+                    C=svc_C,
+                    gamma=gamma,
+                    random_state=dp.SEED,
+                ),
+            ),
+        ]
+    )
+    start = time.time()
+    svc_pipeline.fit(X_trainval, y_trainval)
+    svc_fit_time = time.time() - start
+
+    start = time.time()
+    svc_pred = svc_pipeline.predict(X_test)
+    svc_predict_time = time.time() - start
+    svc_scores = svc_pipeline.decision_function(X_test)
+
+    sgd_pipeline = Pipeline(
+        [
+            ("scaler", StandardScaler()),
+            (
+                "sgd",
+                SGDClassifier(
+                    loss="hinge",
+                    alpha=lambda_,
+                    max_iter=5000,
+                    tol=1e-4,
+                    random_state=dp.SEED,
+                ),
+            ),
+        ]
+    )
+    start = time.time()
+    sgd_pipeline.fit(X_trainval, y_trainval)
+    sgd_fit_time = time.time() - start
+
+    start = time.time()
+    sgd_pred = sgd_pipeline.predict(X_test)
+    sgd_predict_time = time.time() - start
+    sgd_scores = sgd_pipeline.decision_function(X_test)
+
+    test_results = {
+        "Ours: Pegasos RFF": _svm_classification_metrics(
+            y_test, custom_pred, custom_scores
+        ),
+        "sklearn: SVC RBF": _svm_classification_metrics(
+            y_test, svc_pred, svc_scores
+        ),
+        "sklearn: SGD hinge": _svm_classification_metrics(
+            y_test, sgd_pred, sgd_scores
+        ),
+    }
+
+    test_results["Ours: Pegasos RFF"]["Fit time (s)"] = custom_fit_time
+    test_results["Ours: Pegasos RFF"]["Predict time (s)"] = custom_predict_time
+    test_results["sklearn: SVC RBF"]["Fit time (s)"] = svc_fit_time
+    test_results["sklearn: SVC RBF"]["Predict time (s)"] = svc_predict_time
+    test_results["sklearn: SGD hinge"]["Fit time (s)"] = sgd_fit_time
+    test_results["sklearn: SGD hinge"]["Predict time (s)"] = sgd_predict_time
+
+    print("\nTask B SVM test-set metrics")
+    ev.compare(test_results)
+
+    print("Test-set confusion matrices [[TN, FP], [FN, TP]]")
+    print("Pegasos RFF:\n", ev.confusion_matrix(y_test, custom_pred))
+    print("SVC RBF:\n", ev.confusion_matrix(y_test, svc_pred))
+    print("SGD hinge:\n", ev.confusion_matrix(y_test, sgd_pred))
+
+    print("\nPegasos diagnostics")
+    print(f"  ||w||: {custom_model.weight_norm_:.6f}")
+    print(f"  Margin width: {custom_model.margin_width_:.6f}")
+    print(
+        f"  Support vectors: "
+        f"{len(custom_model.support_vector_indices_)} / {len(y_trainval)}"
+    )
+
+    return {
+        "test_results": test_results,
+        "cross_validation": cv_results,
+        "custom_model": custom_model,
+    }
 def run_tree_benchmark() -> dict:
     """Complete driver for Problem 5 (Tree)."""
     figures_dir = ensure_figures_dir("report/figures")
@@ -519,3 +827,5 @@ def run_tree_benchmark() -> dict:
 
 if __name__ == "__main__":
     run_tree_benchmark()
+    run_svm_benchmark()
+
