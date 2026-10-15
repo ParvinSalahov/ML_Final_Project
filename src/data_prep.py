@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-import src.tools as tt 
+import tools as tt 
 # --- Config -----------------------------------------------------------------
 SEED = 42
 DATA_PATH = "data/house_sale.csv"   # change if your filename differs
@@ -42,7 +42,12 @@ UNUSED_COLUMNS: list[str] = [
     "img_url",
     "id_y",
     "attributes",
-    "extra info"
+    "extra_info",
+    "estate_rel_url",
+    "Binanın növü",
+    "description",
+    "owner_title",
+    "shop_title"
 ]
 
 
@@ -63,9 +68,9 @@ def clean(df):
     Return the cleaned DataFrame.
     """
     df['area'] = df['Sahə'].str.replace(r'[^0-9.]', '', regex=True)
-    df['area'] = pd.to_numeric(df['Sahə'],errors='coerce')
+    df['area'] = pd.to_numeric(df['area'],errors='coerce')
     df['land_area'] = df['Torpaq sahəsi'].str.replace(r'[^0-9.]', '', regex=True)
-    df['land_area'] = pd.to_numeric(df['Torpaq sahəsi'],errors='coerce')
+    df['land_area'] = pd.to_numeric(df['land_area'],errors='coerce')
     df[['floor', 'total_floor']] = df['Mərtəbə'].str.split('/', expand=True)
     df['floor'] = pd.to_numeric(df['floor'].str.strip(), errors='coerce').astype('Int64')
     df['total_floor'] = pd.to_numeric(df['total_floor'].str.strip(), errors='coerce').astype('Int64')
@@ -81,12 +86,12 @@ def clean(df):
 
     non_room_categories = ['Torpaq', 'Qaraj', 'Obyekt']
     mask_rooms = df['Kateqoriya'].isin(non_room_categories)
-    df.loc[mask_rooms, 'Otaq sayı'] = df.loc[mask_rooms, 'Otaq sayı'].afillna(0)
+    df.loc[mask_rooms, 'Otaq sayı'] = df.loc[mask_rooms, 'Otaq sayı'].fillna(0)
 
     mask = (df['Kateqoriya'] == 'Həyət evi/Bağ evi') & (df['Otaq sayı'].isna())
     df.loc[mask, 'Otaq sayı'] = df[mask].apply(tt.get_rooms_from_row, axis=1)
 
-    mask = df['Otaq sayı'].isna() & df['Sahə'].notna()
+    mask = df['Otaq sayı'].isna() & df['area'].notna()
     df.loc[mask, 'Otaq sayı'] = df[mask].apply(
     lambda row: tt.impute_rooms_byarea(row, df), 
     axis=1
@@ -99,8 +104,8 @@ def clean(df):
     df.loc[mask, 'area'] = 0
 
     other_categories = ~df['Kateqoriya'].isin(['Həyət evi/Bağ evi', 'Torpaq'])
+    df['land_area'] = pd.to_numeric(df['land_area'], errors='coerce')
     df.loc[other_categories, 'land_area'] = 0
-    print(df['land_area'].value_counts(dropna=False))
 
     mask = df['repair'].isna()
     df.loc[mask, 'repair'] = df[mask].apply(tt.get_repair_from_row, axis=1)
@@ -110,7 +115,7 @@ def clean(df):
     df['repair'] = df['repair'].fillna(0)
 
     df = df.drop(columns=['mortgage'])
-    df.rename(columns={'ipoteka': 'mortgage'}, inplace=True)
+    df.rename(columns={'İpoteka': 'mortgage'}, inplace=True)
     df['mortgage'] = df['mortgage'].fillna(0)
 
     df = df.drop(columns=['bill_of_sale'])

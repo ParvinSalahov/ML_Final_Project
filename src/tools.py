@@ -1,5 +1,6 @@
 import re
 import pandas as pd
+import numpy as np
 
 def extract_rooms_from_description(text: str) -> int | None:
     """
