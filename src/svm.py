@@ -37,7 +37,7 @@ class PegasosSVM:
         random_state: int = 42,
         n_epochs: int = 20,
         learning_rate_scale: float = 1.0,
-        use_rff: bool = True,
+        use_rff: bool = False,
         n_components: int = 256,
         gamma: float = 1.0,
         
@@ -205,14 +205,13 @@ class PegasosSVM:
         return self
 
     def decision_function(self, X):
-        if (
-            self.w is None
-            or self.classes_ is None
-            or self.n_features_in_ is None
-            or self.rff_weights_ is None
-            or self.rff_offsets_ is None
-        ):
+        if self.w is None or self.classes_ is None or self.n_features_in_ is None:
             raise RuntimeError("fit must be called before making predictions")
+
+        if self.use_rff and (
+            self.rff_weights_ is None or self.rff_offsets_ is None
+        ):
+            raise RuntimeError("Random Fourier features are not initialized")
 
         features = np.asarray(X, dtype=float)
 
