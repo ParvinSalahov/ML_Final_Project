@@ -37,17 +37,34 @@ class PegasosSVM:
         lambda_: float = 1e-4,     # regularisation strength (1/(n*C) flavour)
         n_iters: int = 20_000,     # number of sub-gradient steps
         random_state: int = 42,
+        
     ):
         self.lambda_ = lambda_
         self.n_iters = n_iters
         self.random_state = random_state
         self.w = None              # weight vector
-        self.b = 0.0               # bias
+        self.b = 0.0  
+        self.classes_: np.ndarray | None = None
 
-    @staticmethod
-    def _to_pm1(y):
-        """Map {0,1} (or any 2-class labels) to {-1, +1}. Store the mapping."""
-        raise NotImplementedError("TODO: encode labels to +/-1")
+    
+    def _to_pm1(self,y):
+        labels = np.asarray(y)
+
+        if labels.ndim != 1 or labels.size == 0:
+            raise ValueError("y must be a non-empty one-dimensional array")
+
+        if labels.dtype.kind not in "biuf":
+            raise ValueError("y must contain numeric class labels")
+
+        if not np.all(np.isfinite(labels)):
+            raise ValueError("y must contain only finite labels")
+
+        classes = np.unique(labels)
+        if classes.size != 2:
+            raise ValueError("y must contain exactly two classes")
+
+        self.classes_ = classes
+        return np.where(labels == classes[0], -1.0, 1.0)
 
     def fit(self, X, y):
         """
