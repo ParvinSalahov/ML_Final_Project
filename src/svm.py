@@ -115,9 +115,19 @@ class PegasosSVM:
         return self
 
     def decision_function(self, X):
-        """Return the signed margin  w . x + b  for each row."""
-        raise NotImplementedError("TODO: decision_function")
+        if self.w is None or self.classes_ is None:
+            raise RuntimeError("fit must be called before making predictions")
+
+        features = np.asarray(X, dtype=float)
+
+        if features.ndim != 2 or features.shape[1] != self.w.shape[0]:
+            raise ValueError("X must have the same feature count used in fit")
+
+        if not np.all(np.isfinite(features)):
+            raise ValueError("X must contain only finite values")
+
+        return features @ self.w + self.b
 
     def predict(self, X):
-        """Return class labels (map sign of decision_function back to your labels)."""
-        raise NotImplementedError("TODO: predict")
+        margins = self.decision_function(X)
+        return self.classes_[(margins >= 0).astype(int)]

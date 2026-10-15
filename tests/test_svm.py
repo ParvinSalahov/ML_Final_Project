@@ -46,3 +46,32 @@ def test_fit_learns_separable_data_deterministically():
     assert first.w.shape == (1,)
     np.testing.assert_array_equal(first.w, second.w)
     assert first.b == second.b
+
+
+def test_predict_returns_original_labels():
+    X = np.array([[-2.0], [-1.0], [1.0], [2.0]])
+    y = np.array([0, 0, 1, 1])
+
+    model = PegasosSVM(
+        lambda_=0.01,
+        n_iters=1000,
+        random_state=7,
+    ).fit(X, y)
+
+    np.testing.assert_array_equal(model.predict(X), y)
+    assert model.decision_function(X).shape == (X.shape[0],)
+
+
+def test_prediction_requires_fitted_model():
+    with pytest.raises(RuntimeError):
+        PegasosSVM().predict(np.array([[0.0]]))
+
+
+def test_prediction_rejects_wrong_feature_count():
+    model = PegasosSVM(n_iters=10).fit(
+        np.array([[-1.0], [1.0]]),
+        np.array([0, 1]),
+    )
+
+    with pytest.raises(ValueError):
+        model.predict(np.array([[1.0, 2.0]]))
