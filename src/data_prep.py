@@ -181,45 +181,40 @@ def make_features(df, fit_info=None):
       - assemble X (features) and y (target `price`).
     Return (X, y, feature_names).
     """
+    df = df.copy()
+
     binary_columns = ['repair', 'bill_of_sale', 'mortgage']
     for col in binary_columns:
         if col in df.columns:
             df[col] = df[col].apply(tt.convert_to_binary)
 
-    df = pd.get_dummies(df, columns=['city', 'category'], drop_first=False, dtype=int)
+    if fit_info is None:
+        fit_info = {
+            'freq': {
+                col: df[col].value_counts(normalize=True)
+                for col in ['location', 'address'] if col in df.columns
+            }
+        }
 
-    for col in ['location', 'address']:
+    for col, freq_map in fit_info['freq'].items():
         if col in df.columns:
-            freq_map = df[col].value_counts(normalize=True)
             df[col] = df[col].map(freq_map).fillna(0)
 
-    category_rename_map = {
-    'category_Həyət evi/Bağ evi': 'category_country_house',
-    'category_Torpaq': 'category_land',
-    'category_Köhnə tikili': 'category_old_building',
-    'category_Yeni tikili': 'category_new_building',
-    'category_Obyekt': 'category_commercial', 
-    'category_Ofis': 'category_office',
-    'category_Qaraj': 'category_garage'
-    }
+    df = pd.get_dummies(df, columns=['city', 'category'], drop_first=False, dtype=int)
 
     df = df.rename(columns=category_rename_map)
-
-    city_rename_map = {
-        'city_bakı': 'city_baku',
-        'city_xırdalan': 'city_khirdalan',
-        'city_xaçmaz': 'city_khachmaz',
-        'city_astara': 'city_astara',
-        'city_sumqayıt': 'city_sumgayit'
-    }
-
     df = df.rename(columns=city_rename_map)
 
     y = np.log1p(df['price'])
     X = df.drop(columns=['price'])
-    feature_names = X.columns.tolist()
+
+    if 'cols' not in fit_info:
+        fit_info['cols'] = X.columns.tolist()
+    X = X.reindex(columns=fit_info['cols'], fill_value=0)
+
+    feature_names = fit_info['cols']
     
-    return X, y, feature_names
+    return X, y, feature_names, fit_info
 
 
 def make_tier_label(y_price, threshold=None):
