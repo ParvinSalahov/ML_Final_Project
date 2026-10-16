@@ -47,6 +47,7 @@ try:
     from . import benchmark as bm
     from . import tune
     from . import explore_figures as ef
+    from . import ensembles as en
 except ImportError:
     import data_prep as dp
     from decision_tree import DecisionTree
@@ -56,6 +57,7 @@ except ImportError:
     import tune
     import explore_figures as ef
     import linear_baselines as lb
+    import ensembles as en
 
 def main() -> None:
     figures_dir = "report/figures"
@@ -67,7 +69,7 @@ def main() -> None:
     print("=" * 80)
     print(" MLE-AI-201 MACHINE LEARNING FINAL PROJECT — REPRODUCIBILITY ORCHESTRATOR")
     print(
-        f" Mode: {'QUICK (skips grid sweeps)' if quick_mode else 'FULL (reproduces all 11 figures & tables)'}"
+        f" Mode: {'QUICK (skips grid sweeps)' if quick_mode else 'FULL (reproduces all 19 figures & tables)'}"
     )
     print("=" * 80)
 
@@ -167,6 +169,12 @@ def main() -> None:
         "scikit-learn Tree": {"RMSE": sk_rmse, "MAE": sk_mae, "R2": sk_r2, "Fit Time (s)": sk_reg_fit_time},
         **lin,
     })
+
+    print("\n[Step 2c] Optional bonus: ensembles from scratch (Task A)...")
+    ens = en.run_ensembles(
+        DecisionTree, X_tr, y_tr_arr, X_va, y_va_arr, X_te, y_te_arr,
+        figures_dir=figures_dir, quick=quick_mode, seed=dp.SEED, tree_test_rmse=c_rmse,
+    )
 
     d = te.assign(pred=c_reg_pred, y=y_te_arr)
     print("\n" + "=" * 70)
