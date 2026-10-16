@@ -70,7 +70,7 @@ def study_max_depth_overfitting(
     val_aucs = []
     fit_times = []
 
-    print(f"\n--- [Problem 4a] Sweeping max_depth ({criterion}) ---")
+    print(f"\n[Problem 4a] Sweeping max_depth ({criterion})")
     for d in depths:
         t0 = time.time()
         tree = DecisionTree(
@@ -166,7 +166,7 @@ def study_max_depth_overfitting(
     plot_path = os.path.join(figures_dir, "tree_overfitting_depth.png")
     plt.savefig(plot_path)
     plt.close()
-    print(f"Saved plot: {plot_path}")
+    print(f"  - Saved plot: {plot_path}")
 
     return {
         "depths": depths,
@@ -201,7 +201,7 @@ def compare_gini_vs_entropy(
     gini_times = []
     entropy_times = []
 
-    print("\n--- [Problem 4a] Comparing Gini vs Entropy ---")
+    print("\n[Problem 4a] Comparing gini vs entropy")
     for d in depths:
         # Gini
         t0 = time.time()
@@ -261,7 +261,7 @@ def compare_gini_vs_entropy(
     plot_path = os.path.join(figures_dir, "tree_gini_vs_entropy.png")
     plt.savefig(plot_path)
     plt.close()
-    print(f"Saved plot: {plot_path}")
+    print(f"  - Saved plot: {plot_path}")
 
     return {
         "depths": depths,
@@ -289,7 +289,7 @@ def study_min_samples_leaf(
     val_f1s = []
     val_aucs = []
 
-    print(f"\n--- [Problem 4a] Sweeping min_samples_leaf (depth={best_depth}) ---")
+    print(f"\n[Problem 4a] Sweeping min_samples_leaf (depth={best_depth})")
     for leaf in leaf_sizes:
         tree = DecisionTree(
             task="classification",
@@ -332,7 +332,7 @@ def study_min_samples_leaf(
     plot_path = os.path.join(figures_dir, "tree_min_samples_leaf.png")
     plt.savefig(plot_path)
     plt.close()
-    print(f"Saved plot: {plot_path}")
+    print(f"  - Saved plot: {plot_path}")
 
     return {
         "leaf_sizes": leaf_sizes,
@@ -355,7 +355,7 @@ def run_tree_tuning() -> dict:
     """
     figures_dir = ensure_figures_dir("report/figures")
 
-    print("Loading and preparing data...")
+    print("\n[Problem 4] Loading and preparing data...")
     tr, va, _ = dp.prepare_data(seed=dp.SEED)
     X_tr_df, y_tr_price, _, fit_info = dp.make_features(tr)
     X_val_df, y_val_price, _, _ = dp.make_features(va, fit_info=fit_info)
@@ -369,7 +369,7 @@ def run_tree_tuning() -> dict:
     y_tr = y_tier_tr.to_numpy(dtype=int)
     y_val = y_tier_val.to_numpy(dtype=int)
 
-    print(f"Data shapes: X_tr={X_tr.shape}, X_val={X_val.shape}")
+    print(f"  - Data shapes: X_tr={X_tr.shape}, X_val={X_val.shape}")
 
     # 1. Sweep max_depth
     depth_res = study_max_depth_overfitting(
@@ -406,28 +406,25 @@ def run_tree_tuning() -> dict:
         "random_state": dp.SEED,
     }
 
-    print("\n=================================================================")
-    print(" PROBLEM 4(c) FINAL TREE CONFIGURATION (from Validation Evidence)")
-    print("=================================================================")
+    print("\n[Problem 4c] Final tree configuration (from validation evidence)")
     for k, v in final_config.items():
-        print(f"  {k:20s}: {v}")
-    print(f"  Validation F1-Score : {leaf_res['best_val_f1']:.4f}")
-    print(f"  Validation ROC-AUC  : {leaf_res['best_val_auc']:.4f}")
-    print("\n  [SELECTION RATIONALE & JUSTIFICATION]")
-    print(f"  * Overfit Danger: Depth 18 (leaf=1) reaches Train AUC=0.9996 but")
-    print(f"    causes Validation ROC-AUC to collapse to 0.9252 due to uncalibrated")
+        print(f"  - {k:20s}: {v}")
+    print(f"  - Validation F1-score : {leaf_res['best_val_f1']:.4f}")
+    print(f"  - Validation ROC-AUC  : {leaf_res['best_val_auc']:.4f}")
+    print("\n  Selection rationale:")
+    print(f"  - Overfit danger: depth 18 (leaf=1) reaches train AUC=0.9996 but")
+    print(f"    causes validation ROC-AUC to collapse to 0.9252 due to uncalibrated")
     print(f"    single-sample leaves memorizing label noise.")
     print(
-        f"  * Principled Choice: Depth {final_config['max_depth']} with min_samples_leaf={final_config['min_samples_leaf']}"
+        f"  - Principled choice: depth {final_config['max_depth']} with min_samples_leaf={final_config['min_samples_leaf']}"
     )
     print(f"    maintains high F1 ({leaf_res['best_val_f1']:.4f}) while boosting")
     print(
-        f"    Validation ROC-AUC to {leaf_res['best_val_auc']:.4f} (+0.04 over unpruned tree),"
+        f"    validation ROC-AUC to {leaf_res['best_val_auc']:.4f} (+0.04 over unpruned tree),"
     )
     print(
-        f"    reducing tree size by >90% and yielding robust, calibrated probabilities."
+        f"    reducing tree size by >90% and yielding robust, calibrated probabilities.\n"
     )
-    print("=================================================================\n")
 
     return {
         "final_config": final_config,
@@ -446,7 +443,7 @@ def run_svm_tuning() -> dict:
     """
     figures_dir = ensure_figures_dir("report/figures")
 
-    print("\nLoading data for SVM tuning...")
+    print("\n[Problem 4] Loading data for SVM tuning...")
     tr, va, _ = dp.prepare_data(seed=dp.SEED)
 
     X_tr_df, y_tr_price, _, fit_info = dp.make_features(tr)
@@ -473,7 +470,6 @@ def run_svm_tuning() -> dict:
     reference_gamma = 1.0
     epoch_values = [10, 30, 60]
     learning_rate_scales = [0.5, 1.0, 2.0]
-
 
     def evaluate_svm(lambda_, gamma, epochs, learning_rate_scale):
         model = PegasosSVM(
@@ -505,7 +501,6 @@ def run_svm_tuning() -> dict:
             "margin_width": model.margin_width_,
         }
 
-
     # Change epoch count while holding other settings fixed.
     epoch_results = [
         evaluate_svm(reference_lambda, reference_gamma, epochs, 1.0)
@@ -525,7 +520,7 @@ def run_svm_tuning() -> dict:
     )
     selected_learning_rate = best_learning_rate_result["learning_rate_scale"]
 
-    print("\nEpoch comparison (validation data)")
+    print("\nEpoch comparison (validation data):")
     for result in epoch_results:
         print(
             f"epochs={result['n_epochs']:3d} | "
@@ -536,7 +531,7 @@ def run_svm_tuning() -> dict:
             f"margin={result['margin_width']:.4f}"
         )
 
-    print("\nLearning-rate comparison (validation data)")
+    print("\nLearning-rate comparison (validation data):")
     for result in learning_rate_results:
         print(
             f"learning_rate_scale={result['learning_rate_scale']:g} | "
@@ -589,7 +584,7 @@ def run_svm_tuning() -> dict:
     tradeoff_path = os.path.join(figures_dir, "svm_lambda_gamma_validation.png")
     fig.savefig(tradeoff_path)
     plt.close(fig)
-    print(f"Saved plot: {tradeoff_path}")
+    print(f"  - Saved plot: {tradeoff_path}")
 
     # Plot 2: Margin width 2/||w|| vs Validation F1 (scatter)
     # Required bias-variance trade-off plot: as lambda grows the margin widens
@@ -629,7 +624,7 @@ def run_svm_tuning() -> dict:
     margin_path = os.path.join(figures_dir, "svm_margin_vs_f1.png")
     fig.savefig(margin_path)
     plt.close(fig)
-    print(f"Saved plot: {margin_path}")
+    print(f"  - Saved plot: {margin_path}")
 
     # Plot 3: Objective convergence of selected best model
     plt.figure(figsize=(8, 5), dpi=300)
@@ -650,7 +645,7 @@ def run_svm_tuning() -> dict:
     objective_path = os.path.join(figures_dir, "svm_objective_convergence.png")
     plt.savefig(objective_path)
     plt.close()
-    print(f"Saved plot: {objective_path}")
+    print(f"  - Saved plot: {objective_path}")
 
     return {
         "best_config": {

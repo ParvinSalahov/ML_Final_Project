@@ -62,12 +62,10 @@ def run_benchmark_task_b(
     criterion: str = "entropy",
 ) -> dict:
     """Benchmark Task B (Classification - Price Tier): Ours vs. sklearn."""
-    print("\n=======================================================")
-    print(" [Problem 5a] Benchmarking Task B: Price Tier Classification")
+    print("\n[Problem 5a] Benchmarking task b: Price tier classification")
     print(
-        f" Matched Settings: criterion={criterion}, max_depth={max_depth}, min_samples_leaf={min_samples_leaf}"
+        f"  - Matched settings: criterion={criterion}, max_depth={max_depth}, min_samples_leaf={min_samples_leaf}"
     )
-    print("=======================================================")
 
     # 1. Custom Decision Tree
     t0 = time.time()
@@ -153,12 +151,10 @@ def run_benchmark_task_a(
     min_samples_leaf: int = 10,
 ) -> dict:
     """Benchmark Task A (Regression - Price): Ours vs. sklearn."""
-    print("\n=======================================================")
-    print(" [Problem 5a] Benchmarking Task A: Price Regression")
+    print("\n[Problem 5a] Benchmarking task a: Price regression")
     print(
-        f" Matched Settings: criterion=mse, max_depth={max_depth}, min_samples_leaf={min_samples_leaf}"
+        f"  - Matched settings: criterion=mse, max_depth={max_depth}, min_samples_leaf={min_samples_leaf}"
     )
-    print("=======================================================")
 
     # 1. Custom Decision Tree Regressor
     t0 = time.time()
@@ -237,9 +233,7 @@ def run_cross_validation_uncertainty(
     min_samples_leaf: int = 10,
 ) -> dict:
     """Problem 5(c): Cross-validated metrics with uncertainty (mean ± std)."""
-    print(f"\n=======================================================")
-    print(f" [Problem 5c] {n_splits}-Fold Cross-Validation Uncertainty Estimation")
-    print("=======================================================")
+    print(f"\n[Problem 5c] {n_splits}-fold cross-validation uncertainty estimation")
 
     n_samples = len(X)
     rng = np.random.default_rng(dp.SEED)
@@ -325,9 +319,9 @@ def run_cross_validation_uncertainty(
         "Sklearn ROC-AUC": (np.mean(sk_aucs), np.std(sk_aucs)),
     }
 
-    print("\n[Cross-Validation Summary (Mean ± Std)]")
+    print("\nCross-validation summary (mean ± std):")
     for k, (m, s) in cv_results.items():
-        print(f"  {k:<16s}: {m:.4f} ± {s:.4f}")
+        print(f"  - {k:<16s}: {m:.4f} ± {s:.4f}")
 
     return cv_results
 
@@ -425,7 +419,7 @@ def plot_benchmark_results(
     fig_path = os.path.join(figures_dir, "benchmark_tree.png")
     plt.savefig(fig_path)
     plt.close()
-    print(f"\nSaved benchmark plot: {fig_path}")
+    print(f"\n  - Saved benchmark plot: {fig_path}")
     return fig_path
 
 
@@ -485,7 +479,7 @@ def run_svm_cross_validation(
             use_rff=True,
             n_components=n_components,
             gamma=gamma,
-            learning_rate_scale=learning_rate_scale,    
+            learning_rate_scale=learning_rate_scale,
         ).fit(X_fold_train_scaled, y_fold_train)
 
         custom_pred = custom_model.predict(X_fold_val_scaled)
@@ -550,14 +544,14 @@ def run_svm_cross_validation(
         )
 
     summary = {}
-    print("\nSVM cross-validation results (mean ± std)")
+    print("\nSvm cross-validation results (mean ± std):")
     for model_name, metrics in model_scores.items():
         summary[model_name] = {}
         for metric_name, values in metrics.items():
             mean = float(np.mean(values))
             std = float(np.std(values))
             summary[model_name][metric_name] = (mean, std)
-            print(f"  {model_name} {metric_name}: {mean:.4f} ± {std:.4f}")
+            print(f"  - {model_name} {metric_name}: {mean:.4f} ± {std:.4f}")
 
     return summary
 
@@ -705,19 +699,19 @@ def run_svm_benchmark(
     test_results["sklearn: SGD hinge"]["Fit time (s)"] = sgd_fit_time
     test_results["sklearn: SGD hinge"]["Predict time (s)"] = sgd_predict_time
 
-    print("\nTask B SVM test-set metrics")
+    print("\nTask b SVM test-set metrics")
     ev.compare(test_results)
 
     print("Test-set confusion matrices [[TN, FP], [FN, TP]]")
-    print("Pegasos RFF:\n", ev.confusion_matrix(y_test, custom_pred))
-    print("SVC RBF:\n", ev.confusion_matrix(y_test, svc_pred))
-    print("SGD hinge:\n", ev.confusion_matrix(y_test, sgd_pred))
+    print("  - Pegasos RFF:\n", ev.confusion_matrix(y_test, custom_pred))
+    print("  - SVC RBF:\n", ev.confusion_matrix(y_test, svc_pred))
+    print("  - SGD hinge:\n", ev.confusion_matrix(y_test, sgd_pred))
 
-    print("\nPegasos diagnostics")
-    print(f"  ||w||: {custom_model.weight_norm_:.6f}")
-    print(f"  Margin width: {custom_model.margin_width_:.6f}")
+    print("\nPegasos diagnostics:")
+    print(f"  - ||w||: {custom_model.weight_norm_:.6f}")
+    print(f"  - Margin width: {custom_model.margin_width_:.6f}")
     print(
-        f"  Support vectors: "
+        f"  - Support vectors: "
         f"{len(custom_model.support_vector_indices_)} / {len(y_trainval)}"
     )
 
@@ -794,44 +788,41 @@ def run_tree_benchmark(run_cv: bool = True, n_splits: int = 5) -> dict:
     plot_benchmark_results(task_b, task_a, figures_dir=figures_dir)
 
     # 6. Gap & Structural Analysis
-    print("\n=================================================================")
-    print(" PROBLEM 5(a) STRUCTURAL & IMPLEMENTATION GAP ANALYSIS")
-    print("=================================================================")
+    print("\n[Problem 5a] Structural & implementation gap analysis")
     print(
-        f"1. Prediction Agreement: Task B test predictions agree on {task_b['agreement']:.2f}% of samples."
+        f"  - Prediction agreement: task b test predictions agree on {task_b['agreement']:.2f}% of samples."
     )
     print(
-        f"   Task A regression predictions have Pearson correlation = {task_a['correlation']:.4f}."
+        f"  - Task a regression predictions have Pearson correlation = {task_a['correlation']:.4f}."
     )
-    print("2. Why do slight numeric differences exist?")
+    print("  - Why slight numeric differences exist:")
     print(
-        "   * Floating-Point Precision: scikit-learn uses 32-bit floats for thresholds"
-    )
-    print(
-        "     and split evaluations in compiled Cython, while our tree evaluates in 64-bit NumPy."
+        "    - Floating-point precision: scikit-learn uses 32-bit floats for thresholds"
     )
     print(
-        "   * Split Tie-Breaking: When multiple candidate features or thresholds yield identical"
+        "      and split evaluations in compiled Cython, while our tree evaluates in 64-bit NumPy."
     )
     print(
-        "     impurity reduction, sklearn breaks ties based on Cython memory indexing, while our"
-    )
-    print("     NumPy implementation breaks ties deterministically on first index.")
-    print("3. Fit/Predict Scaling & Runtime:")
-    print(
-        f"   * Training: sklearn is faster ({task_b['sklearn']['Fit Time (s)']:.2f}s vs {task_b['custom']['Fit Time (s)']:.2f}s)"
+        "    - Split tie-breaking: when multiple candidate features or thresholds yield identical"
     )
     print(
-        "     because sklearn compiles to native C extensions with presorted memory buffers,"
+        "      impurity reduction, sklearn breaks ties based on Cython memory indexing, while our"
     )
-    print("     whereas our implementation operates in Python/NumPy.")
+    print("      NumPy implementation breaks ties deterministically on first index.")
+    print("  - Fit/predict scaling & runtime:")
     print(
-        "   * Parity: Despite the runtime difference, our model achieves identical predictive"
+        f"    - Training: sklearn is faster ({task_b['sklearn']['Fit Time (s)']:.2f}s vs {task_b['custom']['Fit Time (s)']:.2f}s)"
     )
     print(
-        "     power (F1 difference < 0.005, R2 difference < 0.005), proving full mathematical equivalence."
+        "      because sklearn compiles to native C extensions with presorted memory buffers,"
     )
-    print("=================================================================\n")
+    print("      whereas our implementation operates in Python/NumPy.")
+    print(
+        "    - Parity: despite the runtime difference, our model achieves identical predictive"
+    )
+    print(
+        "      power (F1 difference < 0.005, R2 difference < 0.005), proving full mathematical equivalence.\n"
+    )
 
     return {
         "task_b": task_b,

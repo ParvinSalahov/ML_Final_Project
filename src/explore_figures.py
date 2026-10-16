@@ -166,17 +166,17 @@ def print_explore_stats(df, y_tr, y_va, y_te, lat_col="lat", lng_col="lng"):
     price = df["price"].dropna()
     price = price[price > 0]
     logp = np.log1p(price)
-    print("\n  [Explore] Price distribution (train):")
+    print("\n[Explore] Price distribution (train):")
     print(
-        f"    n={len(price):,} | mean={price.mean():,.0f} | median={price.median():,.0f} | min={price.min():,.0f} | max={price.max():,.0f}"
+        f"  - n={len(price):,} | mean={price.mean():,.0f} | median={price.median():,.0f} | min={price.min():,.0f} | max={price.max():,.0f}"
     )
-    print(f"    skew(price)={price.skew():.3f} | skew(log1p(price))={logp.skew():.3f}")
+    print(f"  - skew(price)={price.skew():.3f} | skew(log1p(price))={logp.skew():.3f}")
 
     d = df[(df["area"] > 0) & (df["price"] > 0)]
     if len(d) > 2:
         corr = np.corrcoef(np.log(d["area"]), np.log(d["price"]))[0, 1]
         print(
-            f"  [Explore] area vs price: corr(log area, log price)={corr:.3f} (n={len(d):,}, area>0 only)"
+            f"[Explore] Area vs price: corr(log area, log price)={corr:.3f} (n={len(d):,}, area>0 only)"
         )
 
     r = df[df["rooms"].notna() & (df["price"] > 0)]
@@ -184,9 +184,9 @@ def print_explore_stats(df, y_tr, y_va, y_te, lat_col="lat", lng_col="lng"):
         rooms = r["rooms"].astype(float)
         rc = np.corrcoef(rooms, np.log1p(r["price"]))[0, 1]
         counts = rooms.round().clip(upper=8).astype(int).value_counts().sort_index()
-        print(f"  [Explore] rooms: corr(rooms, log price)={rc:.3f}")
+        print(f"[Explore] Rooms: corr(rooms, log price)={rc:.3f}")
         print(
-            "    counts: "
+            "  - counts: "
             + ", ".join(f"{k}{'+' if k == 8 else ''}: {v}" for k, v in counts.items())
         )
 
@@ -197,7 +197,7 @@ def print_explore_stats(df, y_tr, y_va, y_te, lat_col="lat", lng_col="lng"):
             .dropna()
         )
         print(
-            f"  [Explore] location: corr(lat, log price)={g[lat_col].corr(g['_lp']):.3f} | "
+            f"[Explore] Location: corr(lat, log price)={g[lat_col].corr(g['_lp']):.3f} | "
             f"corr(lng, log price)={g[lng_col].corr(g['_lp']):.3f} (n={len(g):,})"
         )
 
@@ -209,17 +209,17 @@ def print_explore_stats(df, y_tr, y_va, y_te, lat_col="lat", lng_col="lng"):
                 .agg(["count", "median"])
                 .sort_values("median", ascending=False)
             )
-            print(f"  [Explore] median price by {col}:")
+            print(f"[Explore] Median price by {col}:")
             for k, row in s.iterrows():
                 print(
-                    f"    {str(k):<24} n={int(row['count']):>6,} | median={row['median']:>12,.0f}"
+                    f"  - {str(k):<24} n={int(row['count']):>6,} | median={row['median']:>12,.0f}"
                 )
 
-    print("  [Explore] Task B class balance:")
+    print("[Explore] Task b class balance:")
     for nm, y in [("train", y_tr), ("val", y_va), ("test", y_te)]:
         y = np.asarray(y)
         print(
-            f"    {nm:<6} n={len(y):>6,} | premium={int((y == 1).sum()):>6,} | "
+            f"  - {nm:<6} n={len(y):>6,} | premium={int((y == 1).sum()):>6,} | "
             f"standard={int((y == 0).sum()):>6,} | premium share={y.mean():.3f}"
         )
 
