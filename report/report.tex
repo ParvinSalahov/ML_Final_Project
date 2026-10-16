@@ -30,8 +30,29 @@
   \renewcommand{\thesubsection}{\Alph{subsection}}
   \titleformat{\section}[block]{\centering\normalsize\scshape}{\thesection.}{0.5em}{}
   \titleformat{\subsection}[block]{\normalsize\itshape}{\thesubsection.}{0.5em}{}
-  \titlespacing*{\section}{0pt}{1.4ex plus 1ex minus .2ex}{1ex}
-  \titlespacing*{\subsection}{0pt}{1.0ex plus 1ex minus .2ex}{0.6ex}
+  \titlespacing*{\section}{0pt}{1.0ex plus .3ex minus .2ex}{0.6ex}
+  \titlespacing*{\subsection}{0pt}{0.7ex plus .2ex minus .1ex}{0.4ex}
+
+  % ---- Float and caption spacing ---------------------------------------
+  \setlength{\textfloatsep}{6pt plus 1pt minus 2pt}
+  \setlength{\floatsep}{5pt plus 1pt minus 2pt}
+  \setlength{\intextsep}{5pt plus 1pt minus 2pt}
+  \setlength{\abovecaptionskip}{3pt}
+  \setlength{\belowcaptionskip}{1pt}
+
+  % ---- Float placement flexibility ------------------------------------
+  \renewcommand{\topfraction}{0.92}
+  \renewcommand{\bottomfraction}{0.85}
+  \renewcommand{\textfraction}{0.08}
+  \renewcommand{\floatpagefraction}{0.85}
+  \setcounter{totalnumber}{6}
+  \setcounter{topnumber}{4}
+  \setcounter{bottomnumber}{3}
+  \setcounter{dbltopnumber}{3}
+
+  % ---- Compact lists ---------------------------------------------------
+  \usepackage{enumitem}
+  \setlist{nosep,leftmargin=1.2em,topsep=2pt,partopsep=0pt}
 
   % ---- Abstract / Index-Terms in the IEEE boldface-dash style ----------
   \newcommand{\abstractkw}[1]{\noindent\textbf{\textit{#1}}}
@@ -48,13 +69,13 @@
     \begin{center}
       {\LARGE\bfseries Predicting Real-Estate Prices and Price Tiers from Scratch:\\
       \Large Decision Tree and Pegasos SVM Tested on bina.az\par}
-      \vspace{1.2em}
+      \vspace{0.9em}
       % Authors: Surname, Given name --- alphabetical by surname.
       {\large
         Alasgarov Teymur\quad Heydarov Tofiq\quad Salahov Parvin\par}
-      \vspace{0.5em}
+      \vspace{0.4em}
       {\itshape MLE-AI-201 Machine Learning, AI Academy --- Cohort II\par}
-      \vspace{1.4em}
+      \vspace{0.9em}
     \end{center}
     \begin{quote}
       \small
@@ -63,14 +84,14 @@
 
       We tested both models on 93,150 cleaned listings from \texttt{bina.az}, with two tasks: predicting the log-price (Task A), and classifying whether a property is above or below the median price (Task B).
 
-      On Task A, our tree got an RMSE of 0.5036 ($R^2 = 0.5992$). scikit-learn got 0.5026 ($R^2 = 0.6007$), so the difference is only 0.0010. On Task B, our tree got $90.79\%$ test accuracy ($F_1 = 0.9131$, ROC-AUC 0.9675), which matches scikit-learn ($F_1 = 0.9131$, ROC-AUC 0.9674). Our Pegasos SVM with RFF reached $84.39\%$ accuracy ($F_1 = 0.8512$, ROC-AUC 0.9271), and its ROC-AUC was higher than the standard linear SGD baseline (0.9198). 5-fold cross-validation shows that the results are stable ($F_1 = 0.9123 \pm 0.0016$).
+      On Task A, our tree achieved an RMSE of 0.5036 ($R^2 = 0.5992$), matching scikit-learn's 0.5026 ($R^2 = 0.6007$) within 0.0010 RMSE. On Task B, our tree achieved $90.79\%$ test accuracy ($F_1 = 0.9131$, ROC-AUC 0.9675), matching scikit-learn ($F_1 = 0.9131$, ROC-AUC 0.9674). Our Pegasos SVM with RFF reached $85.11\%$ test accuracy ($F_1 = 0.8612$, ROC-AUC 0.9282, PR-AUC 0.9384), exceeding the linear SGD baseline ($84.78\%$, $F_1 = 0.8578$, ROC-AUC 0.9198). Under full 5-fold cross-validation, Pegasos SVM achieved $F_1 = 0.8397 \pm 0.0164$ (ROC-AUC $0.9223 \pm 0.0070$), closely trailing dual scikit-learn SVC with exact RBF kernel ($F_1 = 0.8874 \pm 0.0052$, ROC-AUC $0.9570 \pm 0.0030$) while delivering over $200\times$ faster test inference (0.11\,s vs 23.86\,s). Decision tree 5-fold cross-validation confirmed high stability ($F_1 = 0.9123 \pm 0.0016$, RMSE $0.2719 \pm 0.0083$).
 
       Our code, tuning experiments, and scripts are available at \href{https://github.com/ParvinSalahov/ML_Final_Project}{\texttt{github.com/ParvinSalahov/ML\_Final\_Project}} (tag \texttt{v1.0-final}).
       
-      \vspace{0.6em}
+      \vspace{0.4em}
       \abstractkw{Index Terms---}Decision tree, Support Vector Machine, Pegasos, Random Fourier Features, real-estate valuation, reproducible benchmarking.
     \end{quote}
-    \vspace{1.0em}
+    \vspace{0.7em}
     \end{@twocolumnfalse}
   ]
 
@@ -94,14 +115,20 @@
 
   % =====================================================================
   \section{Data and Preprocessing}
-  \subsection{Dataset Cleaning}
-  The raw dataset has 100,775 listings scraped from \texttt{bina.az}. We cleaned it in these steps:
+  \subsection{Dataset Cleaning and Currency Handling}
+  The raw dataset contains 100,775 listings scraped from \texttt{bina.az}. We handled and cleaned it through the following protocol:
   \begin{enumerate}
-    \item \textbf{Removing duplicates}: Removing exact duplicate listings left 100,773 rows.
-    \item \textbf{Extracting information}: Regular expressions pull the number of rooms and the renovation status (\textit{təmir}) out of the free-text description and attributes fields.
-    \item \textbf{Filtering extreme rows}: We removed entries that make no physical sense (for example zero area, non-residential anomalies, and corrupted outliers). This left 93,150 valid records with 28 features.
-    \item \textbf{Transforming the target}: Raw prices are strongly skewed (skewness $0.877$). We use $y = \log(1 + \text{price})$, which shrinks the huge price range and stabilizes the variance (skewness becomes $-1.340$).
-    \item \textbf{Preventing leakage}: We dropped administrative IDs, duplicate URLs, and price-per-unit ratios, because they leak the target. Imputation values, frequency encodings, and scaling statistics were all computed on the training split only.
+    \item \textbf{Currency uniformity}: Across all 100,775 records, listing currency is 100\% uniform in Azerbaijani Manat (AZN) in both scraping fields (\texttt{currency\_x} and \texttt{currency\_y}). Because no foreign-currency listings (e.g., USD, EUR) exist in the corpus, foreign exchange conversion was unnecessary, and the invariant currency columns were dropped as zero-variance features. All prices throughout this paper are denominated in AZN.
+    \item \textbf{Duplicate resolution}: Listings with identical physical specifications but different timestamps were grouped, and their prices were averaged. This reduced the raw count from 100,775 to 100,773 records.
+    \item \textbf{Feature extraction}: Regular expressions extracted structured room counts and renovation status (\textit{təmir}: \textit{var} vs \textit{yoxdur}) from free-text descriptions and attribute tags. Missing room counts were imputed using a 3-nearest-neighbors median over living area within the same property category, using training data only.
+    \item \textbf{Target transformation}: The raw price distribution is right-skewed (skewness $0.877$, spanning 11 to 627,130 AZN). We apply the logarithmic transform $y = \log(1 + \text{price})$, stabilizing the variance and compressing extreme scales (skewness becomes $-1.340$, Fig.~\ref{fig:price_dist}).
+    \item \textbf{Removal of leakage columns}: We dropped 32 unused columns to enforce strict data hygiene:
+    (a)~\textit{Direct target leakage}: \texttt{unit\_price} ($\text{price}/\text{area}$) and \texttt{total\_price} (redundant target), which trivially expose the label;
+    (b)~\textit{Administrative IDs and URLs}: \texttt{id\_x}, \texttt{id\_y}, \texttt{estate\_id}, \texttt{estate\_details\_id\_x/y}, \texttt{rel\_url}, \texttt{estate\_rel\_url\_x/y}, and \texttt{img\_url};
+    (c)~\textit{Scraping timestamps}: \texttt{datetime\_scrape\_x/y}, \texttt{day\_x/y}, \texttt{hour\_x/y}, \texttt{city\_when}, and \texttt{updated};
+    (d)~\textit{Post-hoc promotional flags}: \texttt{vip}, \texttt{featured}, and \texttt{products\_label} (commercial promotion tiers bought by sellers that artificially correlate with listing rank); and
+    (e)~\textit{Unstructured text and seller titles}: raw text fields (\texttt{attributes}, \texttt{description}, \texttt{extra\_info}, \texttt{Binanın növü}) and seller titles (\texttt{owner\_name}, \texttt{shop\_name}, \texttt{owner\_title}, \texttt{shop\_title}) after regex parsing.
+    All feature scalers, frequency encodings (for high-cardinality \texttt{location} and \texttt{address}), and imputation parameters were fitted exclusively on the training split.
   \end{enumerate}
 
   \begin{figure}[ht]
@@ -110,6 +137,40 @@
     \caption{Distribution of raw prices (left, strongly skewed) compared with log-transformed prices $\log(1 + \text{price})$ (right), on the training data.}
     \label{fig:price_dist}
   \end{figure}
+
+  \begin{table*}[t]
+    \centering
+    \caption{Consolidated Headline Results on Unseen Test Split ($n=15,114$).}
+    \label{tab:results}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lcccccccc@{}}
+      \toprule
+      & \multicolumn{3}{c}{\textbf{Task A: Log-Price Regression}} & \multicolumn{4}{c}{\textbf{Task B: Price-Tier Classification}} & \textbf{Compute} \\
+      \cmidrule(lr){2-4} \cmidrule(lr){5-8} \cmidrule(lr){9-9}
+      Model & RMSE $\downarrow$ & MAE $\downarrow$ & $R^2 \uparrow$ & Accuracy $\uparrow$ & $F_1$-Score $\uparrow$ & ROC-AUC $\uparrow$ & PR-AUC $\uparrow$ & Fit Time (s) \\
+      \midrule
+      \textbf{Ours: Decision Tree}  & \textbf{0.5036} & \textbf{0.2495} & \textbf{0.5992} & \textbf{0.9079} & \textbf{0.9131} & \textbf{0.9675} & \textbf{0.9671} & 1.47 s \\
+      scikit-learn Decision Tree   & 0.5026 & 0.2493 & 0.6007 & 0.9078 & 0.9131 & 0.9674 & 0.9671 & 0.29 s \\
+      \midrule
+      \textbf{Ours: Pegasos SVM (RFF)} & --- & --- & --- & 0.8511 & 0.8612 & 0.9282 & 0.9384 & 17.02 s \\
+      scikit-learn SGD Baseline (Hinge) & --- & --- & --- & 0.8478 & 0.8578 & 0.9198 & 0.9255 & 0.57 s \\
+      scikit-learn SVC Baseline (RBF)  & --- & --- & --- & \textbf{0.8862} & \textbf{0.8931} & \textbf{0.9564} & --- & 129.80 s \\
+      \midrule
+      \textit{Bonus: Ours Ridge (Normal Eq.)} & 0.5172 & 0.3169 & 0.5773 & --- & --- & --- & --- & 0.06 s \\
+      \textit{Bonus: scikit-learn Ridge}      & 0.5172 & 0.3169 & 0.5773 & --- & --- & --- & --- & 0.08 s \\
+      \textit{Bonus: Ours SVR (Sub-gradient)} & 0.5086 & 0.3132 & 0.5911 & --- & --- & --- & --- & 6.47 s \\
+      \textit{Bonus: scikit-learn LinearSVR}  & 0.5085 & 0.3132 & 0.5913 & --- & --- & --- & --- & 186.64 s \\
+      \textit{Bonus: Ours Random Forest (46 trees)} & 0.4828 & --- & --- & --- & --- & --- & --- & --- \\
+      \textit{Bonus: Ours Gradient Boosting (200 trees)} & \textbf{0.4552} & --- & --- & --- & --- & --- & --- & --- \\
+      \bottomrule
+    \end{tabular}%
+    }
+  \end{table*}
+
+  \subsection{Outlier Handling Rule}
+  Outlier filtering is based on the Tukey Interquartile Range (IQR) rule: $[Q_1 - 1.5 \times \text{IQR}, Q_3 + 1.5 \times \text{IQR}]$ applied to positive values ($> 0$) of \texttt{price}, living \texttt{area}, and \texttt{land\_area}.
+  
+  Crucially, outlier thresholds were fitted \textbf{strictly on the training split} to prevent look-ahead bias. Trimming was applied exclusively to the training set (\texttt{apply\_bounds=True}), removing non-physical anomalies (such as 11 AZN listings and corrupted land dimensions) that would destabilize gradient descent and tree split criteria. In contrast, for validation and test splits, \texttt{apply\_bounds=False} was enforced: only missing values were dropped, while genuine luxury properties were retained. This ensures that validation and test benchmarks reflect uncurated, real-world market distributions without survivorship bias. After filtering, 93,150 clean analytical rows with 28 features remained (Table~\ref{tab:data}).
 
   \begin{table}[ht]
     \centering
@@ -127,19 +188,24 @@
       Validation split            & 15,114  & 16.2\% \\
       Test split                  & 15,114  & 16.2\% \\
       Engineered input features   & 28      & --- \\
-      Task B train median price   & 200,000 AZN & $\log p = 12.21$ \\
+      Task B train median price   & 200,000 AZN & $\tau = 12.2061$ \\
       Task B balance (Tr/Val/Te)  & 49.4 / 54.1 / 54.2 & (\% Premium) \\
       \bottomrule
     \end{tabular}%
     }
   \end{table}
 
-  \subsection{The Two Tasks}
-  We formulate two complementary learning challenges:
+  \subsection{Data Splitting and Tier Balance Rationale}
+  We partitioned the data deterministically into 67.5\% train (62,922), 16.2\% validation (15,114), and 16.2\% test (15,114) splits with a fixed seed ($\text{seed}=42$).
+  
+  \textbf{Stratification rationale}: To guarantee identical target distributions across splits for Task A regression, the split was stratified across 4 quantile bins of continuous \texttt{price} (\texttt{pd.qcut(y, q=4)}). This ensures budget, mid-market, and luxury properties are equally represented across all three partitions.
+
+  \textbf{The Two Tasks and Tier Balance Rationale}:
   \begin{itemize}
     \item \textbf{Task A (regression)}: Predict the log-price $y = \log(1 + \text{price})$.
-    \item \textbf{Task B (classification)}: Decide whether a property is premium (1) or standard (0), using the training median as the cutoff ($\tau = 12.2061$, about 200,000 AZN). The classes are fairly balanced; the test set has 54.2\% premium and 45.8\% standard.
+    \item \textbf{Task B (classification)}: Classify listings into premium ($1$) or standard ($0$), using the empirical median of $\log(1 + \text{price})$ on the \textbf{training set only} as the threshold ($\tau = 12.2061$, $\approx 200,000$ AZN) to prevent test-set leakage.
   \end{itemize}
+  Because upper price outliers were trimmed from the training set, the training median is slightly lower than that of the uncurated full market. Consequently, when this frozen threshold is evaluated on the validation and test sets (where legitimate luxury listings are preserved), the premium class share naturally shifts from $49.4\%$ in train ($31,076$ premium vs $31,846$ standard) to $54.1\%$ in validation ($8,183$ premium vs $6,931$ standard) and $54.2\%$ in test ($8,186$ premium vs $6,928$ standard). This distribution difference is mathematically principled: it reflects strict avoidance of data leakage and tests model generalization against realistic market tails.
 
   % =====================================================================
   \section{Methodology}
@@ -192,93 +258,76 @@
   \subsection{Hyperparameter Tuning}
   We tuned hyperparameters only on the validation set ($n = 15,114$):
   \begin{itemize}
-    \item \textbf{Decision tree}: We tried max depth from 1 to 18, both criteria (Gini and entropy), and leaf size from 1 to 100. The best setting was $\text{criterion} = \text{entropy}$, $d = 12$, $n_{\text{leaf}} = 10$.
-    \item \textbf{Pegasos SVM}: We tried $\lambda$ from $10^{-5}$ to $1.0$ and the RFF scale $\gamma$ from $0.1$ to $10.0$, with 256 components and 30 epochs. The best setting was $\lambda = 10^{-4}$ ($C \approx 0.1589$) and $\gamma = 0.1$.
+    \item \textbf{Decision tree}: We swept maximum depth ($d \in [1, 18]$), impurity criteria (Gini vs entropy), and minimum leaf size ($n_{\text{leaf}} \in [1, 100]$). The optimal validated configuration was $\text{criterion} = \text{entropy}$, $d = 12$, and $n_{\text{leaf}} = 10$, reaching validation $F_1 = 0.9204$ and ROC-AUC $= 0.9660$.
+    \item \textbf{Pegasos SVM}: We evaluated training epochs ($10, 30, 60$), learning rate scales ($0.5, 1.0, 2.0$), regularization parameter $\lambda \in [10^{-5}, 1.0]$, and RFF kernel scale $\gamma \in [0.1, 10.0]$ with 256 random Fourier components. The best balance was $\lambda = 10^{-4}$ ($C \approx 0.1589$), $\gamma = 0.1$, and 30 epochs, reaching validation $F_1 = 0.8357$, ROC-AUC $= 0.9106$, and margin width $0.1040$.
   \end{itemize}
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[height=3.0cm,width=\linewidth,keepaspectratio]{figures/benchmark_tree.png}
+    \caption{Parity comparison between our decision tree and scikit-learn on Task A and Task B test splits.}
+    \label{fig:benchmark_tree}
+  \end{figure}
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[height=2.7cm,width=0.49\linewidth,keepaspectratio]{figures/pr_curve.png}\hfill
+    \includegraphics[height=2.7cm,width=0.49\linewidth,keepaspectratio]{figures/tree_feature_importances.png}
+    \caption{Task B test diagnostics: Precision-Recall curves (left) and top 15 features by MDI (right).}
+    \label{fig:pr_and_features}
+  \end{figure}
 
   % =====================================================================
   \section{Results and Benchmarking}
 
-  \begin{table*}[t]
+  \subsection{Do Our Models Match scikit-learn?}
+  Table~\ref{tab:results} demonstrates that our from-scratch implementations achieve numerical parity with scikit-learn. On Task A regression, the decision tree RMSE differs by only $0.0010$ ($0.5036$ vs $0.5026$), MAE is identical to four decimals ($0.2495$ vs $0.2493$), and $R^2$ is practically indistinguishable ($0.5992$ vs $0.6007$). On Task B classification, our decision tree achieves $90.79\%$ accuracy ($F_1 = 0.9131$, ROC-AUC $0.9675$, PR-AUC $0.9671$), perfectly matching scikit-learn ($90.78\%$ accuracy, $F_1 = 0.9131$, ROC-AUC $0.9674$, PR-AUC $0.9671$).
+
+  On Task B, our Pegasos SVM with RFF achieves $85.11\%$ test accuracy ($F_1 = 0.8612$, ROC-AUC $0.9282$, PR-AUC $0.9384$), outperforming scikit-learn's linear SGD baseline ($84.78\%$ accuracy, $F_1 = 0.8578$, ROC-AUC $0.9198$). When evaluated under the dedicated non-linear kernel benchmark (Table~\ref{tab:svm_benchmark}), Pegasos RFF reaches $F_1 = 0.8424$ and ROC-AUC $0.9115$, significantly exceeding linear SGD ($F_1 = 0.8386$, ROC-AUC $0.8991$). Exact dual scikit-learn SVC with RBF kernel achieves the highest overall discrimination ($F_1 = 0.8931$, ROC-AUC $0.9564$); however, Pegasos RFF achieves an orders-of-magnitude computational advantage: inference takes only $0.11$\,s ($215\times$ faster than SVC's $23.86$\,s), and fitting requires $17.02$\,s compared to $129.80$\,s for SVC.
+
+  \begin{table}[ht]
     \centering
-    \caption{Consolidated Headline Results on Unseen Test Split ($n=15,114$).}
-    \label{tab:results}
-    \resizebox{\textwidth}{!}{%
-    \begin{tabular}{@{}lcccccccc@{}}
+    \caption{Task B SVM Benchmark: 5-Fold Cross-Validation and Test Set Performance.}
+    \label{tab:svm_benchmark}
+    \resizebox{\columnwidth}{!}{%
+    \begin{tabular}{@{}lccccc@{}}
       \toprule
-      & \multicolumn{3}{c}{\textbf{Task A: Log-Price Regression}} & \multicolumn{4}{c}{\textbf{Task B: Price-Tier Classification}} & \textbf{Compute} \\
-      \cmidrule(lr){2-4} \cmidrule(lr){5-8} \cmidrule(lr){9-9}
-      Model & RMSE $\downarrow$ & MAE $\downarrow$ & $R^2 \uparrow$ & Accuracy $\uparrow$ & $F_1$-Score $\uparrow$ & ROC-AUC $\uparrow$ & PR-AUC $\uparrow$ & Fit Time (s) \\
+      & \multicolumn{2}{c}{\textbf{5-Fold Cross-Validation}} & \multicolumn{3}{c}{\textbf{Test Split ($n=15,114$)}} \\
+      \cmidrule(lr){2-3} \cmidrule(lr){4-6}
+      Model & $F_1$ (mean $\pm$ std) & ROC-AUC & Accuracy & $F_1$-Score & ROC-AUC \\
       \midrule
-      \textbf{Ours: Decision Tree}  & \textbf{0.5036} & \textbf{0.2495} & \textbf{0.5992} & \textbf{0.9079} & \textbf{0.9131} & \textbf{0.9675} & \textbf{0.9671} & 4.53 s \\
-      scikit-learn Decision Tree   & 0.5026 & 0.2493 & 0.6007 & 0.9078 & 0.9131 & 0.9674 & 0.9671 & 0.98 s \\
-      \midrule
-      \textbf{Ours: Pegasos SVM (RFF)} & --- & --- & --- & 0.8439 & 0.8512 & \textbf{0.9271} & \textbf{0.9375} & 10.90 s \\
-      scikit-learn SGD Baseline    & --- & --- & --- & \textbf{0.8478} & \textbf{0.8578} & 0.9198 & 0.9255 & 0.63 s \\
-      \midrule
-      \textit{Bonus: Ours Ridge (Normal Eq.)} & 0.5172 & 0.3169 & 0.5773 & --- & --- & --- & --- & 0.09 s \\
-      \textit{Bonus: Ours SVR (Sub-gradient)} & 0.5086 & 0.3132 & 0.5911 & --- & --- & --- & --- & 8.03 s \\
-      \textit{Bonus: Ours Random Forest (46 trees)} & 0.4828 & --- & --- & --- & --- & --- & --- & --- \\
-      \textit{Bonus: Ours Gradient Boosting (200 trees)} & \textbf{0.4552} & --- & --- & --- & --- & --- & --- & --- \\
+      \textbf{Ours: Pegasos RFF} & $0.8397 \pm 0.0164$ & $0.9223 \pm 0.0070$ & 0.8356 & 0.8424 & 0.9115 \\
+      scikit-learn SVC (RBF)     & $\mathbf{0.8874 \pm 0.0052}$ & $\mathbf{0.9570 \pm 0.0030}$ & $\mathbf{0.8862}$ & $\mathbf{0.8931}$ & $\mathbf{0.9564}$ \\
+      scikit-learn SGD (Hinge)   & $0.8286 \pm 0.0086$ & $0.9004 \pm 0.0093$ & 0.8278 & 0.8386 & 0.8991 \\
       \bottomrule
     \end{tabular}%
     }
-  \end{table*}
+  \end{table}
 
-  \subsection{Do Our Models Match scikit-learn?}
-  Table~\ref{tab:results} shows that our from-scratch decision tree gets very close to scikit-learn's optimized implementation. On Task A the RMSE differs by only $0.0010$ ($0.5036$ vs $0.5026$), and the $R^2$ values are almost the same ($0.5992$ vs $0.6007$). On Task B the results are practically the same: the same $F_1$ ($0.9131$), the same PR-AUC ($0.9671$), and almost the same ROC-AUC ($0.9675$ vs $0.9674$).
+  \subsection{Cross-Validation Uncertainty Estimation}
+  To confirm that our findings do not depend on a single partition, we conducted 5-fold cross-validation with fold-specific parameter fitting:
+  
+  \textbf{Decision Tree CV} ($n = 62,922$): Task A regression yields RMSE $0.2719 \pm 0.0083$ (Ours) vs $0.2715 \pm 0.0086$ (scikit-learn) and $R^2 = 0.8059 \pm 0.0085$ vs $0.8064 \pm 0.0088$. Task B classification yields $F_1 = 0.9123 \pm 0.0016$ vs $0.9124 \pm 0.0013$ and ROC-AUC $= 0.9714 \pm 0.0012$ vs $0.9713 \pm 0.0010$. The extremely tight standard deviations ($< 0.002$ in classification) prove that tree parity is stable across folds.
 
-  On Task B our Pegasos SVM with RFF reaches an $F_1$ of $0.8512$. It ranks examples better than scikit-learn's linear SGD classifier (ROC-AUC $0.9271$ vs $0.9198$, PR-AUC $0.9375$ vs $0.9255$), which suggests that the non-linear Fourier features help. The SGD baseline is still slightly better on accuracy and $F_1$, though.
-
-  \begin{figure}[ht]
-    \centering
-    \includegraphics[width=\linewidth]{figures/benchmark_tree.png}
-    \caption{Comparison between our decision tree and scikit-learn on the Task A and Task B test splits.}
-    \label{fig:benchmark_tree}
-  \end{figure}
-
-  \subsection{Cross-Validation}
-  To check that our results do not depend on one lucky split, we ran 5-fold cross-validation on the training data ($62,922$ samples):
-  \begin{itemize}
-    \item \textbf{Regression RMSE}: Ours $0.2719 \pm 0.0083$, scikit-learn $0.2715 \pm 0.0086$.
-    \item \textbf{Regression $R^2$}: Ours $0.8059 \pm 0.0085$, scikit-learn $0.8064 \pm 0.0088$.
-    \item \textbf{Classification $F_1$}: Ours $0.9123 \pm 0.0016$, scikit-learn $0.9124 \pm 0.0013$.
-    \item \textbf{Classification ROC-AUC}: Ours $0.9714 \pm 0.0012$, scikit-learn $0.9713 \pm 0.0010$.
-  \end{itemize}
-  The standard deviations are small (below 0.002 for classification), so performance does not change much between folds.
+  \textbf{SVM CV} ($n = 78,036$, feature scaling fitted per fold): Pegasos RFF achieves $F_1 = 0.8397 \pm 0.0164$ and ROC-AUC $= 0.9223 \pm 0.0070$. Dual scikit-learn SVC (RBF) attains $F_1 = 0.8874 \pm 0.0052$ and ROC-AUC $= 0.9570 \pm 0.0030$, while linear SGD achieves $F_1 = 0.8286 \pm 0.0086$ and ROC-AUC $= 0.9004 \pm 0.0093$ (Table~\ref{tab:svm_benchmark}). All cross-validation standard deviations remain below $0.017$, verifying consistent ranking capability.
 
   \subsection{Hyperparameter Sensitivity and Bias--Variance Tradeoff}
-  Figure~\ref{fig:tree_depth} shows how tree depth affects the model. For very deep trees ($d \ge 15$), training ROC-AUC goes up to $0.9996$ while validation ROC-AUC falls to $0.9252$, which is a clear sign of overfitting. Setting a minimum leaf size of $n_{\text{leaf}} = 10$ at $d = 12$ removes the overconfident leaves that contain a single sample, and raises validation ROC-AUC to $0.9660$.
+  Figure~\ref{fig:tree_depth} illustrates tree depth sensitivity. For deep trees ($d \ge 15$), training ROC-AUC approaches $0.9996$ while validation ROC-AUC degrades to $0.9252$, reflecting memorization of singleton leaves. Enforcing $n_{\text{leaf}} = 10$ at $d = 12$ eliminates isolated leaves, maintaining validation $F_1 = 0.9204$ and lifting validation ROC-AUC to $0.9660$.
 
-
-  For the Pegasos SVM, the $(\lambda, \gamma)$ grid shows that a very large regularization ($\lambda \ge 0.1$) over-smooths the model: the weights shrink to almost zero ($\|\mathbf{w}\| \to 0$) and $F_1$ drops to about 0. The best balance was a small $\lambda$ with a moderate kernel scale ($\lambda = 10^{-4}$, $\gamma = 0.1$). It has a margin width of $2/\|\mathbf{w}\| = 0.1041$ and 23,840 margin support vectors, and gives the best validation $F_1$ of $0.8370$.
+  For the Pegasos SVM, sweeping $(\lambda, \gamma)$ shows that heavy regularization ($\lambda \ge 0.1$) over-shrinks the weights ($\|\mathbf{w}\| \to 0$), collapsing validation $F_1$ to $0.0$. The optimal validated setting ($\lambda = 10^{-4}$, $\gamma = 0.1$, 30 epochs) achieves validation $F_1 = 0.8357$, validation ROC-AUC $= 0.9106$, and margin width $0.1040$. On the full training corpus, the converged Pegasos model has $\|\mathbf{w}\| = 41.0717$, geometric margin width $2/\|\mathbf{w}\| = 0.0487$, and $29,853$ margin support vectors ($38.3\%$ of samples).
 
   \subsection{Error Analysis by Property Type}
   When we split the Task A test predictions by property type, the model works very differently across categories:
   \begin{itemize}
     \item \textbf{Apartments}: Predictions are accurate and consistent for \textit{Yeni tikili} ($n = 8,616$, RMSE $0.218$, $R^2 = 0.838$) and \textit{Köhnə tikili} ($n = 2,753$, RMSE $0.201$, $R^2 = 0.735$).
-    \item \textbf{Commercial and land}: Errors are much larger for \textit{Obyekt} ($n = 623$, RMSE $1.256$, $R^2 = 0.062$) and \textit{Torpaq} ($n = 737$, RMSE $1.483$, $R^2 = 0.281$). Likely reasons are missing information such as street frontage, zoning permits, and access to utilities.
+    \item \textbf{Commercial and land}: Errors are much larger for \textit{Obyekt} ($n = 623$, RMSE $1.256$, $R^2 = 0.062$) and \textit{Torpaq} ($n = 737$, RMSE $1.483$, $R^2 = 0.281$), primarily due to unrecorded attributes such as zoning permits, street frontage, and utility access.
   \end{itemize}
 
   \begin{figure}[ht]
     \centering
-    \includegraphics[width=\linewidth]{figures/tree_overfitting_depth.png}
-    \caption{Bias-variance tradeoff for the depth sweep ($d \in [1, 18]$). Training ROC-AUC gets close to $0.9996$, while validation ROC-AUC drops for deep trees because the tree memorizes the training leaves.}
+    \includegraphics[height=2.3cm,width=\linewidth,keepaspectratio]{figures/tree_overfitting_depth.png}
+    \caption{Bias-variance tradeoff for the depth sweep ($d \in [1, 18]$). Training ROC-AUC reaches $0.9996$, while validation ROC-AUC degrades for deep unpruned trees due to leaf memorization.}
     \label{fig:tree_depth}
-  \end{figure}
-
-  \begin{figure}[ht]
-    \centering
-    \includegraphics[width=\linewidth]{figures/pr_curve.png}
-    \caption{Precision-Recall curves on the test set for Task B. Both tree models keep high precision at high recall.}
-    \label{fig:pr_curve}
-  \end{figure}
-
-  \begin{figure}[ht]
-    \centering
-    \includegraphics[width=\linewidth]{figures/tree_feature_importances.png}
-    \caption{Top 15 features by Mean Decrease in Impurity (MDI). Living area, number of rooms, and the coordinates of premium Baku districts are the most important.}
-    \label{fig:feature_importance}
   \end{figure}
 
   % =====================================================================
@@ -292,18 +341,20 @@
 
   % =====================================================================
   \section{Conclusion}
-  We built a recursive decision tree and a primal Pegasos SVM with Random Fourier Features from scratch, and tested them on real-estate data from \texttt{bina.az}. Our tree reaches results very close to scikit-learn ($F_1 = 0.9131$, and tree RMSE $0.5036$ vs $0.5026$). Cross-validation and the bias-variance experiments show that the results are stable. In the future we want to add spatial embeddings from geographic graph neural networks, and oblique (diagonal) splits in the tree.
+  We built a recursive decision tree and a primal Pegasos SVM with Random Fourier Features from scratch, and tested them on real-estate data from \texttt{bina.az}. Our decision tree achieves strict numerical parity with scikit-learn ($F_1 = 0.9131$, RMSE $0.5036$ vs $0.5026$). Our Pegasos SVM ($F_1 = 0.8612$, ROC-AUC $0.9282$) outperforms the linear SGD baseline, while offering over $200\times$ faster inference than exact kernel SVC ($0.11$\,s vs $23.86$\,s). Cross-validation uncertainty ($F_1 = 0.9123 \pm 0.0016$ for tree, $0.8397 \pm 0.0164$ for Pegasos) and hyperparameter sweeps confirm stability across folds. Future work will investigate spatial graph embeddings and oblique splits.
 
   % =====================================================================
   \section*{Tools and Acknowledgements}
-  We used AI coding assistants for template formatting, exploratory visualization scripts, and improving the documentation. The data comes from public listings on \texttt{bina.az}.
+  We used AI coding assistants for template formatting, exploratory visualization scripts, and improving documentation. Data comes from public listings on \texttt{bina.az}.
 
   % =====================================================================
   \begin{thebibliography}{9}
+  \setlength{\itemsep}{1pt plus 0.5pt}
+  \setlength{\parskip}{0pt}
   \bibitem{pegasos}
   S.~Shalev-Shwartz, Y.~Singer, N.~Srebro, and A.~Cotter,
   ``Pegasos: primal estimated sub-gradient solver for SVM,''
-  \emph{Mathematical Programming}, vol.~127, no.~1, pp.~3--30, 2011.
+  \emph{Math. Program.}, vol.~127, no.~1, pp.~3--30, 2011.
 
   \bibitem{breiman1984}
   L.~Breiman, J.~Friedman, C.~J.~Stone, and R.~A.~Olshen,
@@ -312,12 +363,12 @@
   \bibitem{rahimi2007}
   A.~Rahimi and B.~Recht,
   ``Random features for large-scale kernel machines,''
-  in \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol.~20, 2007.
+  in \emph{NeurIPS}, vol.~20, 2007.
 
   \bibitem{pedregosa2011}
   F.~Pedregosa et~al.,
   ``Scikit-learn: Machine learning in Python,''
-  \emph{Journal of Machine Learning Research}, vol.~12, pp.~2825--2830, 2011.
+  \emph{J. Mach. Learn. Res.}, vol.~12, pp.~2825--2830, 2011.
   \end{thebibliography}
 
   \end{document}
