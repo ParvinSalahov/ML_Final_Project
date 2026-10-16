@@ -203,7 +203,7 @@ def plot_pr_curve(
 
     if save_path:
         fig.savefig(save_path, bbox_inches="tight")
-        print(f"Saved PR curve plot: {save_path}")
+        print(f"  - Saved PR curve plot: {save_path}")
     else:
         plt.show()
     plt.close(fig)
@@ -267,7 +267,7 @@ def plot_residuals(
 
     if save_path:
         fig.savefig(save_path, bbox_inches="tight")
-        print(f"Saved residual plot: {save_path}")
+        print(f"  - Saved residual plot: {save_path}")
     else:
         plt.show()
     plt.close(fig)
@@ -367,7 +367,7 @@ def plot_feature_importances(
 
     if save_path:
         fig.savefig(save_path, bbox_inches="tight")
-        print(f"Saved feature importance plot: {save_path}")
+        print(f"  - Saved feature importance plot: {save_path}")
     else:
         plt.show()
     plt.close(fig)
@@ -441,7 +441,7 @@ def plot_svm_feature_weights(
 
     if save_path:
         fig.savefig(save_path, bbox_inches="tight")
-        print(f"Saved SVM weight plot: {save_path}")
+        print(f"  - Saved SVM weight plot: {save_path}")
     else:
         plt.show()
     plt.close(fig)
@@ -463,7 +463,7 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     from .svm import PegasosSVM
     from sklearn.tree import DecisionTreeRegressor, DecisionTreeClassifier
 
-    print("Loading data...")
+    print("\n[Evaluate] Loading data...")
     tr, va, te = dp.prepare_data(seed=dp.SEED)
     X_tr_df, y_tr_price, feat_names, fit_info = dp.make_features(tr)
     X_va_df, y_va_price, _, _ = dp.make_features(va, fit_info=fit_info)
@@ -478,7 +478,7 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     X_te = X_te_df.to_numpy(dtype=float)
 
     # 1. Decision Tree Classification
-    print("\nFitting Decision Tree (entropy, depth=12, leaf=10)...")
+    print("\n[Evaluate] Fitting decision tree (entropy, depth=12, leaf=10)...")
     tree_cls = DecisionTree(
         task="classification",
         criterion="entropy",
@@ -496,7 +496,7 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     )
 
     # 2. Pegasos SVM Classification
-    print("\nFitting Pegasos SVM (lambda=1e-4, gamma=0.1, 30 epochs)...")
+    print("\n[Evaluate] Fitting Pegasos SVM (lambda=1e-4, gamma=0.1, 30 epochs)...")
     X_tr_scaled, X_va_scaled = dp.standardize(X_tr_df, X_va_df)
     _, X_te_scaled = dp.standardize(X_tr_df, X_te_df)
     X_tr_svm = X_tr_scaled.to_numpy(dtype=float)
@@ -521,7 +521,7 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     )
 
     # 3. PR-AUC and ROC-AUC
-    print("\nEvaluating PR-AUC & ROC-AUC for Task B (Price Tier)...")
+    print("\n[Evaluate] Evaluating PR-AUC & ROC-AUC for task b (price tier)...")
     tree_va_scores = tree_cls.predict_proba(X_va)[:, 1]
     tree_te_scores = tree_cls.predict_proba(X_te)[:, 1]
     svm_va_scores = svm.decision_function(X_va_svm)
@@ -557,7 +557,9 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     )
 
     # 4. Task A Regression & Residuals
-    print("\nFitting Task A Decision Tree Regressor (mse, depth=12, leaf=10)...")
+    print(
+        "\n[Evaluate] Fitting task a decision tree regressor (mse, depth=12, leaf=10)..."
+    )
     tree_reg = DecisionTree(
         task="regression",
         criterion="mse",
@@ -585,13 +587,11 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     )
 
     # 5. Error Analysis (Failure Mode Breakdown)
-    print("\n" + "=" * 70)
-    print(" PROBLEM 6 ERROR ANALYSIS (Failure Mode Breakdown)")
-    print("=" * 70)
+    print("\n[Problem 6] Error analysis (failure mode breakdown)")
 
     residuals = y_te_arr - pred_reg
-    print("\n[Task A Regression Failure Modes]")
-    print("1. Top Luxury Outliers (Under-predictions: Actual >> Predicted):")
+    print("\nTask a regression failure modes:")
+    print("  - Top luxury outliers (under-predictions: actual >> predicted):")
     worst_under = np.argsort(residuals)[::-1][:5]
     for idx in worst_under:
         act_azn = np.expm1(y_te_arr[idx])
@@ -603,15 +603,13 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
             f"   Actual: {act_azn:12,.0f} AZN | Pred: {prd_azn:10,.0f} AZN | "
             f"Area: {orig.get('area', '?')} | Cat: {cat} | Loc: {loc}"
         )
-    print(
-        "   -> Why it fails: Massive luxury properties (>3M AZN) or Torpaq (land plots"
-    )
-    print(
-        "      where living area=0) suffer from tree bounded leaf means. Trees cannot"
-    )
-    print("      extrapolate beyond the highest training leaf average.")
+    print("  - Why it fails: massive luxury properties (>3M AZN) or Torpaq (land plots")
+    print("    where living area=0) suffer from tree bounded leaf means. Trees cannot")
+    print("    extrapolate beyond the highest training leaf average.")
 
-    print("\n2. Top Low-End Listing Anomalies (Over-predictions: Predicted >> Actual):")
+    print(
+        "\n  - Top low-end listing anomalies (over-predictions: predicted >> actual):"
+    )
     worst_over = np.argsort(residuals)[:5]
     for idx in worst_over:
         act_azn = np.expm1(y_te_arr[idx])
@@ -623,10 +621,10 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
             f"   Actual: {act_azn:12,.0f} AZN | Pred: {prd_azn:10,.0f} AZN | "
             f"Area: {orig.get('area', '?')} | Cat: {cat} | Loc: {loc}"
         )
-    print("   -> Why it fails: Data noise / listing entry errors (e.g., monthly rental")
-    print("      or down payments posted under sale listings, e.g., 3,000-10,000 AZN).")
+    print("  - Why it fails: data noise / listing entry errors (e.g., monthly rental")
+    print("    or down payments posted under sale listings, e.g., 3,000-10,000 AZN).")
 
-    print("\n[Task B Classification Failure Modes & Confusion Matrices]")
+    print("\nTask b classification failure modes & confusion matrices:")
     pred_tree_cls = tree_cls.predict(X_te)
     pred_svm_cls = svm.predict(X_te_svm)
     y_te_cls_arr = y_te_cls.to_numpy(dtype=int)
@@ -645,29 +643,27 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     fn_tree = np.where((pred_tree_cls == 0) & (y_te_cls_arr == 1))[0]
 
     print(
-        f"\nTree False Positives (Predicted Premium, Actually Standard: {len(fp_tree)} cases):"
+        f"  - Tree false positives (predicted premium, actually standard: {len(fp_tree)} cases):"
     )
     print(
-        "   -> Typical cause: Large properties in distant suburbs (Absheron/Khirdalan/Masazir)"
+        "    - Typical cause: large properties in distant suburbs (Absheron/Khirdalan/Masazir)"
     )
     print(
         "      or border properties whose log price sits just barely below the median threshold."
     )
 
     print(
-        f"\nTree False Negatives (Predicted Standard, Actually Premium: {len(fn_tree)} cases):"
+        f"  - Tree false negatives (predicted standard, actually premium: {len(fn_tree)} cases):"
     )
     print(
-        "   -> Typical cause: Small/1-room apartments in ultra-prime districts (Sabayil, Nizami St)"
+        "    - Typical cause: small/1-room apartments in ultra-prime districts (Sabayil, Nizami St)"
     )
     print(
         "      where high square-meter price compensates for low area, but low area triggers standard prediction."
     )
 
     # 6. Consolidated Results Table
-    print("\n" + "=" * 70)
-    print(" CONSOLIDATED RESULTS TABLE (Problem 6 Required Deliverable)")
-    print("=" * 70)
+    print("\n[Problem 6] Consolidated results table")
 
     sk_tree_cls = DecisionTreeClassifier(
         criterion="entropy",
@@ -709,7 +705,7 @@ def evaluate_all(save_dir: str = "report/figures") -> dict:
     }
     compare(all_models_table)
 
-    print("Done!")
+    print("\nDone")
     return all_models_table
 
 

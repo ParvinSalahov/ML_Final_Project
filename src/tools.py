@@ -87,7 +87,7 @@ def impute_rooms_byarea(row, df_full, room_col='Otaq sayı', area_col='area', ca
     return imputed_rooms
 
 def handle_duplicates_and_average_price(df, price_col='price'):
-    print(f"Row count before handling duplicates: {len(df)}")
+    print(f"  - Row count before handling duplicates: {len(df)}")
     
     if price_col not in df.columns:
         for alt in ['Qiymət', 'qiymət', 'Price']:
@@ -101,7 +101,7 @@ def handle_duplicates_and_average_price(df, price_col='price'):
     
     df = df.drop_duplicates(subset=subset_cols, keep='first').reset_index(drop=True)
     
-    print(f"Row count after handling duplicates: {len(df)}")
+    print(f"  - Row count after handling duplicates: {len(df)}")
     return df
 
 def fit_outlier_bounds(df, columns, multiplier=1.5):

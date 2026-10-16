@@ -1,183 +1,323 @@
-% =====================================================================
-%  IEEE-STYLE CONFERENCE REPORT TEMPLATE  (self-contained)
-%  MLE-AI-201 Machine Learning -- Final Project
-%
-%  This template MIMICS the IEEE two-column conference look using only
-%  standard LaTeX packages. It does NOT depend on IEEEtran.cls, so it
-%  compiles anywhere (tectonic, pdflatex, Overleaf) with nothing extra.
-%
-%  Build:   tectonic report.tex      (recommended)
-%     or:   pdflatex report.tex ; pdflatex report.tex
-% =====================================================================
-\documentclass[10pt,twocolumn,a4paper]{article}
+  % =====================================================================
+  %  IEEE-STYLE CONFERENCE REPORT
+  %  MLE-AI-201 Machine Learning -- Final Project
+  % =====================================================================
+  \documentclass[10pt,twocolumn,a4paper]{article}
 
-% ---- Geometry: IEEE-like margins / two narrow columns ----------------
-\usepackage[a4paper,top=0.75in,bottom=1.0in,left=0.68in,right=0.68in,columnsep=0.25in]{geometry}
+  % ---- Geometry: IEEE-like margins / two narrow columns ----------------
+  \usepackage[a4paper,top=0.75in,bottom=1.0in,left=0.68in,right=0.68in,columnsep=0.25in]{geometry}
 
-% ---- Times-like font (standard, ships with every TeX distro) ---------
-\usepackage{mathptmx}          % Times text + math
-\usepackage[T1]{fontenc}
-\usepackage[utf8]{inputenc}    % allows accented / Azerbaijani chars
+  % ---- Times-like font (standard, ships with every TeX distro) ---------
+  \usepackage{mathptmx}          % Times text + math
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}    % allows accented / Azerbaijani chars
+  \DeclareUnicodeCharacter{0259}{e}
+  \DeclareUnicodeCharacter{018F}{E}
 
-% ---- Common, dependency-free packages --------------------------------
-\usepackage{graphicx}
-\usepackage{amsmath,amssymb}
-\usepackage{booktabs}
-\usepackage{array}
-\usepackage{titlesec}
-\usepackage{caption}
-\usepackage{cite}
-\usepackage[hidelinks]{hyperref}
-\usepackage{url}
+  % ---- Common, dependency-free packages --------------------------------
+  \usepackage{graphicx}
+  \usepackage{amsmath,amssymb}
+  \usepackage{booktabs}
+  \usepackage{array}
+  \usepackage{titlesec}
+  \usepackage{caption}
+  \usepackage{cite}
+  \usepackage[hidelinks]{hyperref}
+  \usepackage{url}
 
-% ---- IEEE-style section headings -------------------------------------
-\renewcommand{\thesection}{\Roman{section}}
-\renewcommand{\thesubsection}{\Alph{subsection}}
-\titleformat{\section}[block]{\centering\normalsize\scshape}{\thesection.}{0.5em}{}
-\titleformat{\subsection}[block]{\normalsize\itshape}{\thesubsection.}{0.5em}{}
-\titlespacing*{\section}{0pt}{1.4ex plus 1ex minus .2ex}{1ex}
-\titlespacing*{\subsection}{0pt}{1.0ex plus 1ex minus .2ex}{0.6ex}
+  % ---- IEEE-style section headings -------------------------------------
+  \renewcommand{\thesection}{\Roman{section}}
+  \renewcommand{\thesubsection}{\Alph{subsection}}
+  \titleformat{\section}[block]{\centering\normalsize\scshape}{\thesection.}{0.5em}{}
+  \titleformat{\subsection}[block]{\normalsize\itshape}{\thesubsection.}{0.5em}{}
+  \titlespacing*{\section}{0pt}{1.4ex plus 1ex minus .2ex}{1ex}
+  \titlespacing*{\subsection}{0pt}{1.0ex plus 1ex minus .2ex}{0.6ex}
 
-% ---- Abstract / Index-Terms in the IEEE boldface-dash style ----------
-\newcommand{\abstractkw}[1]{\noindent\textbf{\textit{#1}}}
+  % ---- Abstract / Index-Terms in the IEEE boldface-dash style ----------
+  \newcommand{\abstractkw}[1]{\noindent\textbf{\textit{#1}}}
 
-\captionsetup{font=small,labelsep=period}
-\setlength{\parindent}{1em}
+  \captionsetup{font=small,labelsep=period}
+  \setlength{\parindent}{1em}
 
-% =====================================================================
-\begin{document}
+  % =====================================================================
+  \begin{document}
 
-% ------------------------- TITLE BLOCK --------------------------------
-\twocolumn[
-  \begin{@twocolumnfalse}
-  \begin{center}
-    {\LARGE\bfseries Your Project Title Here:\\A Clear, Specific Subtitle\par}
-    \vspace{1.2em}
-    % Authors: Surname, Given name --- alphabetical by surname.
-    {\large
-      Aliyeva, Aysel\quad Mammadov, Murad\quad Rustamli, Rustam\par}
-    \vspace{0.5em}
-    {\itshape MLE-AI-201 Machine Learning, AI Academy --- Cohort II\par}
-    \vspace{1.4em}
-  \end{center}
-  \begin{quote}
-    \small
-    \abstractkw{Abstract---}% IEEE uses an em-dash after "Abstract"
-    One paragraph, roughly 150--250 words. State the problem (price
-    prediction and the derived price-tier task on the bina.az dataset),
-    what you built from scratch (a decision tree and an SVM), the key
-    result (headline metrics vs.\ scikit-learn), and the main takeaway.
-    Write it last. \textbf{End the abstract with your repository link},
-    per IEEE convention:
-    \href{https://github.com/your-team/your-repo}{\texttt{github.com/your-team/your-repo}}
-    (tag \texttt{v1.0-final}).
+  % ------------------------- TITLE BLOCK --------------------------------
+  \twocolumn[
+    \begin{@twocolumnfalse}
+    \begin{center}
+      {\LARGE\bfseries Predicting Real-Estate Prices and Price Tiers from Scratch:\\
+      \Large Decision Tree and Pegasos SVM Tested on bina.az\par}
+      \vspace{1.2em}
+      % Authors: Surname, Given name --- alphabetical by surname.
+      {\large
+        Alasgarov Teymur\quad Heydarov Tofiq\quad Salahov Parvin\par}
+      \vspace{0.5em}
+      {\itshape MLE-AI-201 Machine Learning, AI Academy --- Cohort II\par}
+      \vspace{1.4em}
+    \end{center}
+    \begin{quote}
+      \small
+      \abstractkw{Abstract---}%
+      Estimating property prices is hard in a market like Azerbaijan's. Prices are very skewed, location matters a lot, and listings scraped from websites are messy. In this project we built two models completely from scratch using only NumPy. The first is a decision tree (it uses MSE for regression, and Gini impurity or entropy for classification). The second is a Support Vector Machine trained with the Pegasos algorithm, with Random Fourier Features (RFF) added so it can learn non-linear patterns.
 
-    \vspace{0.6em}
-    \abstractkw{Index Terms---}decision tree, support-vector machine,
-    Pegasos, regression, classification, real-estate price prediction.
-  \end{quote}
-  \vspace{1.0em}
-  \end{@twocolumnfalse}
-]
+      We tested both models on 93,150 cleaned listings from \texttt{bina.az}, with two tasks: predicting the log-price (Task A), and classifying whether a property is above or below the median price (Task B).
 
-% =====================================================================
-\section{Introduction}
-Motivate the problem and state your contributions as a short bulleted or
-inline list. What is the task, why does it matter, and what did your
-team do? Keep background brief; cite sources like this~\cite{pegasos}.
+      On Task A, our tree got an RMSE of 0.5036 ($R^2 = 0.5992$). scikit-learn got 0.5026 ($R^2 = 0.6007$), so the difference is only 0.0010. On Task B, our tree got $90.79\%$ test accuracy ($F_1 = 0.9131$, ROC-AUC 0.9675), which matches scikit-learn ($F_1 = 0.9131$, ROC-AUC 0.9674). Our Pegasos SVM with RFF reached $84.39\%$ accuracy ($F_1 = 0.8512$, ROC-AUC 0.9271), and its ROC-AUC was higher than the standard linear SGD baseline (0.9198). 5-fold cross-validation shows that the results are stable ($F_1 = 0.9123 \pm 0.0016$).
 
-\section{Related Work / Background}
-Briefly place your work in context: decision trees (impurity, information
-gain), the soft-margin SVM and the hinge-loss primal, and the Pegasos
-sub-gradient solver you used~\cite{pegasos}. One or two short paragraphs.
+      Our code, tuning experiments, and scripts are available at \href{https://github.com/ParvinSalahov/ML_Final_Project}{\texttt{github.com/ParvinSalahov/ML\_Final\_Project}} (tag \texttt{v1.0-final}).
+      
+      \vspace{0.6em}
+      \abstractkw{Index Terms---}Decision tree, Support Vector Machine, Pegasos, Random Fourier Features, real-estate valuation, reproducible benchmarking.
+    \end{quote}
+    \vspace{1.0em}
+    \end{@twocolumnfalse}
+  ]
 
-\section{Data and Preprocessing}
-Describe the bina.az dataset: size, key columns, and the cleaning you
-did (currency, types, missing values, duplicates, outliers). State the
-two tasks (price regression; price-tier classification), how you derived
-the tier label, and your train/validation/test split. \textbf{Name the
-leakage columns you removed and why.}
+  % =====================================================================
+  \section{Introduction}
+  Automated valuation models (AVMs) are used for mortgage decisions, market transparency, and risk management. But raw listings from \texttt{bina.az} are tricky to work with. Prices go from 11 AZN up to 627,130 AZN, the descriptions are written in free-form Azerbaijani with inconsistent wording, and many categories are very imbalanced.
 
-\begin{table}[t]
-  \centering
-  \caption{Dataset summary after cleaning.}
-  \label{tab:data}
-  \begin{tabular}{@{}lr@{}}
-    \toprule
-    Property & Value \\
-    \midrule
-    Rows (after cleaning)       & --- \\
-    Features used               & --- \\
-    Train / Val / Test split    & --- / --- / --- \\
-    Price-tier balance (\%)     & --- \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+  In this project we wanted to show that models we code ourselves from the basic math can give results close to professional libraries. Our main contributions are:
+  \begin{itemize}
+    \item \textbf{From-scratch algorithms}: A recursive binary decision tree (MSE, Gini, and entropy) and a hinge-loss SVM trained with Pegasos, using Random Fourier Features to get non-linear decision boundaries. Both are vectorised with NumPy.
+    \item \textbf{Leakage-free features}: Careful data cleaning, extracting information from the text, frequency encoding, and computing every statistic only on the training data.
+    \item \textbf{Benchmarking}: We compare against scikit-learn on 93,150 samples, with 5-fold cross-validation, residual analysis, and hyperparameter sweeps.
+    \item \textbf{Reproducibility}: One command (\texttt{python -m src.run\_all}) recreates all 19 figures and tables.
+  \end{itemize}
 
-\section{Method}
-\subsection{Decision tree (from scratch)}
-Describe your impurity criteria (Gini / entropy / MSE reduction), the
-split search, recursion, leaf rule, and hyperparameters.
+  % =====================================================================
+  \section{Related Work / Background}
+  Decision trees split the feature space with simple yes/no rules, choosing the split that makes the groups as pure as possible~\cite{breiman1984}. They are greedy, but they handle mixed numeric and categorical features, non-linear patterns, and different feature scales without needing standardization.
 
-\subsection{Support-vector machine (from scratch)}
-State the objective and the Pegasos update you implemented:
-\begin{equation}
-  J(\mathbf{w},b)=\tfrac{\lambda}{2}\lVert\mathbf{w}\rVert^{2}
-  +\tfrac{1}{n}\sum_{i=1}^{n}\max\!\big(0,\,1-y_i(\mathbf{w}^{\top}\mathbf{x}_i+b)\big).
-\end{equation}
-Explain the learning-rate schedule, feature scaling, and your non-linear
-extension (kernelised Pegasos or random Fourier features), if any.
+  A soft-margin SVM looks for the hyperplane with the widest margin while allowing a few violations (the hinge loss). Instead of solving the usual dual problem with SMO, Shalev-Shwartz et al.~\cite{pegasos} introduced Pegasos, which works directly on the primal objective with stochastic sub-gradient steps. It reaches an $\epsilon$-accurate solution in $\mathcal{O}(1/(\lambda\epsilon))$ iterations, no matter how large the dataset is. To capture non-linear patterns in the market, we map features with Random Fourier Features~\cite{rahimi2007}, which approximate the Gaussian RBF kernel $\mathcal{K}(\mathbf{x}, \mathbf{z}) = \exp(-\gamma \|\mathbf{x} - \mathbf{z}\|^2)$.
 
-\section{Experimental Setup}
-Metrics (RMSE/MAE/$R^2$ for regression; precision/recall/F1/AUC for
-classification), hyperparameter search protocol, seeds, and the
-scikit-learn baselines you compared against (with matched settings).
+  % =====================================================================
+  \section{Data and Preprocessing}
+  \subsection{Dataset Cleaning}
+  The raw dataset has 100,775 listings scraped from \texttt{bina.az}. We cleaned it in these steps:
+  \begin{enumerate}
+    \item \textbf{Removing duplicates}: Removing exact duplicate listings left 100,773 rows.
+    \item \textbf{Extracting information}: Regular expressions pull the number of rooms and the renovation status (\textit{təmir}) out of the free-text description and attributes fields.
+    \item \textbf{Filtering extreme rows}: We removed entries that make no physical sense (for example zero area, non-residential anomalies, and corrupted outliers). This left 93,150 valid records with 28 features.
+    \item \textbf{Transforming the target}: Raw prices are strongly skewed (skewness $0.877$). We use $y = \log(1 + \text{price})$, which shrinks the huge price range and stabilizes the variance (skewness becomes $-1.340$).
+    \item \textbf{Preventing leakage}: We dropped administrative IDs, duplicate URLs, and price-per-unit ratios, because they leak the target. Imputation values, frequency encodings, and scaling statistics were all computed on the training split only.
+  \end{enumerate}
 
-\section{Results}
-Lead with a results table; back every claim with a number or figure.
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/explore_price_distribution.png}
+    \caption{Distribution of raw prices (left, strongly skewed) compared with log-transformed prices $\log(1 + \text{price})$ (right), on the training data.}
+    \label{fig:price_dist}
+  \end{figure}
 
-\begin{table}[t]
-  \centering
-  \caption{Headline results (test set, mean $\pm$ std over folds).}
-  \label{tab:results}
-  \begin{tabular}{@{}lcc@{}}
-    \toprule
-    Model & Task A (RMSE) & Task B (F1) \\
-    \midrule
-    Ours: decision tree     & --- & --- \\
-    Ours: SVM (Pegasos)     & n/a & --- \\
-    scikit-learn baseline   & --- & --- \\
-    \bottomrule
-  \end{tabular}
-\end{table}
+  \begin{table}[ht]
+    \centering
+    \caption{Dataset summary and split statistics.}
+    \label{tab:data}
+    \resizebox{\columnwidth}{!}{%
+    \begin{tabular}{@{}lrr@{}}
+      \toprule
+      Property & Absolute Count & Share \\
+      \midrule
+      Raw input rows              & 100,775 & 100.0\% \\
+      After deduplication         & 100,773 & 100.0\% \\
+      Total clean analytical rows & 93,150  & 100.0\% \\
+      Train split                 & 62,922  & 67.5\% \\
+      Validation split            & 15,114  & 16.2\% \\
+      Test split                  & 15,114  & 16.2\% \\
+      Engineered input features   & 28      & --- \\
+      Task B train median price   & 200,000 AZN & $\log p = 12.21$ \\
+      Task B balance (Tr/Val/Te)  & 49.4 / 54.1 / 54.2 & (\% Premium) \\
+      \bottomrule
+    \end{tabular}%
+    }
+  \end{table}
 
-\begin{figure}[t]
-  \centering
-  % \includegraphics[width=\linewidth]{figures/your_plot.pdf}
-  \fbox{\parbox[c][3.2cm][c]{0.9\linewidth}{\centering\small
-    Replace with a figure (e.g.\ validation curve, confusion matrix,
-    or feature importances). Save plots to \texttt{figures/}.}}
-  \caption{One clear figure beats ten decorative ones.}
-  \label{fig:main}
-\end{figure}
+  \subsection{The Two Tasks}
+  We formulate two complementary learning challenges:
+  \begin{itemize}
+    \item \textbf{Task A (regression)}: Predict the log-price $y = \log(1 + \text{price})$.
+    \item \textbf{Task B (classification)}: Decide whether a property is premium (1) or standard (0), using the training median as the cutoff ($\tau = 12.2061$, about 200,000 AZN). The classes are fairly balanced; the test set has 54.2\% premium and 45.8\% standard.
+  \end{itemize}
 
-\section{Discussion and Limitations}
-Where and why each model fails (luxury outliers, sparse districts,
-scaling effects), the bias--variance story, and honest limitations.
+  % =====================================================================
+  \section{Methodology}
 
-\section{Conclusion}
-One short paragraph: what you found and what you would do next.
+  \subsection{Decision Tree (From Scratch)}
+  The tree builds its splits greedily and recursively. For every feature $j$ and every candidate threshold $\theta$, we measure how much the split reduces impurity:
+  \begin{equation}
+    \Delta I(S, j, \theta) = I(S) - \frac{|S_L|}{|S|} I(S_L) - \frac{|S_R|}{|S|} I(S_R).
+  \end{equation}
+  Here $S_L = \{(\mathbf{x},y) \in S \mid x_j \le \theta\}$ is the group of samples with $x_j \le \theta$, and $S_R = S \setminus S_L$ is everything else. In other words, we compare the impurity before the split with the weighted impurity of the two groups after it.
 
-\section*{Tools and Acknowledgements}
-Disclose any AI-assistant use and what it was used for, plus data/code
-you built on. (Required.)
+  For regression (Task A), the impurity is the mean squared error around the node's mean:
+  \begin{equation}
+    I_{\text{MSE}}(S) = \frac{1}{|S|}\sum_{i \in S} (y_i - \bar{y}_S)^2, \quad \bar{y}_S = \frac{1}{|S|}\sum_{i \in S} y_i.
+  \end{equation}
+  For classification (Task B), we implemented two options, where $p_k = \frac{1}{|S|}\sum_{i \in S} \mathbb{I}(y_i = k)$ is the share of samples of class $k$ in the node:
+  \begin{align}
+    I_{\text{Gini}}(S) &= 1 - \sum_{k=0}^{1} p_k^2, \\
+    I_{\text{Entropy}}(S) &= - \sum_{k=0}^{1} p_k \log_2(p_k + \epsilon).
+  \end{align}
+  A node stops splitting when any of these happens: the depth reaches $d_{\max}$, the node has fewer than $2 \cdot n_{\text{leaf}}$ samples, or a split would leave fewer than $n_{\text{leaf}}$ samples on either side. A leaf predicts the mean $\bar{y}$ for regression, and the class probabilities $[p_0, p_1]$ for classification.
 
-% =====================================================================
-\begin{thebibliography}{9}
-\bibitem{pegasos}
-S.~Shalev-Shwartz, Y.~Singer, N.~Srebro, and A.~Cotter,
-``Pegasos: primal estimated sub-gradient solver for SVM,''
-\emph{Mathematical Programming}, vol.~127, no.~1, pp.~3--30, 2011.
-\end{thebibliography}
+  \subsection{Support Vector Machine with Pegasos (From Scratch)}
+  For binary classification with labels $y_i \in \{-1, +1\}$, we minimize the regularized hinge-loss objective:
+  \begin{equation}
+    J(\mathbf{w}, b) = \frac{\lambda}{2} \|\mathbf{w}\|_2^2 + \frac{1}{n}\sum_{i=1}^{n} \max\big(0, 1 - y_i(\mathbf{w}^\top \mathbf{x}_i + b)\big).
+  \end{equation}
+  The value $\lambda > 0$ controls the regularization ($C \approx 1/(n\lambda)$). At step $t$ the learning rate is $\eta_t = \frac{1}{\lambda t}$, and we pick one random sample $(\mathbf{x}_t, y_t)$. If it violates the margin, meaning $y_t(\mathbf{w}_t^\top \mathbf{x}_t + b_t) < 1$, we update:
+  \begin{align}
+    \mathbf{w}_{t+1} &= (1 - \eta_t \lambda)\mathbf{w}_t + \eta_t y_t \mathbf{x}_t, \\
+    b_{t+1} &= b_t + \eta_t y_t.
+  \end{align}
+  Otherwise we only shrink the weights: $\mathbf{w}_{t+1} = (1 - \eta_t \lambda)\mathbf{w}_t$.
 
-\end{document}
+  To get non-linear boundaries cheaply, we map the standardized features $\mathbf{x} \in \mathbb{R}^d$ into a $D$-dimensional random Fourier space $\mathbf{z}(\mathbf{x}) \in \mathbb{R}^D$:
+  \begin{equation}
+    z_j(\mathbf{x}) = \sqrt{\frac{2}{D}} \cos(\mathbf{\omega}_j^\top \mathbf{x} + \beta_j).
+  \end{equation}
+  The frequencies $\mathbf{\omega}_j$ are drawn from a normal distribution $\mathcal{N}(\mathbf{0}, 2\gamma \mathbf{I})$, and the phase shifts $\beta_j$ are drawn uniformly from $[0, 2\pi]$. This way we avoid building the huge $n \times n$ kernel matrix of the dual SVM.
+
+  % =====================================================================
+  \section{Experimental Setup}
+  \subsection{Evaluation Metrics}
+  All final scores come from the test split that the models never saw ($n = 15,114$):
+  \begin{itemize}
+    \item \textbf{Task A}: RMSE, MAE, and $R^2$.
+    \item \textbf{Task B}: Accuracy, Precision, Recall, Macro $F_1$, ROC-AUC, and PR-AUC.
+  \end{itemize}
+
+  \subsection{Hyperparameter Tuning}
+  We tuned hyperparameters only on the validation set ($n = 15,114$):
+  \begin{itemize}
+    \item \textbf{Decision tree}: We tried max depth from 1 to 18, both criteria (Gini and entropy), and leaf size from 1 to 100. The best setting was $\text{criterion} = \text{entropy}$, $d = 12$, $n_{\text{leaf}} = 10$.
+    \item \textbf{Pegasos SVM}: We tried $\lambda$ from $10^{-5}$ to $1.0$ and the RFF scale $\gamma$ from $0.1$ to $10.0$, with 256 components and 30 epochs. The best setting was $\lambda = 10^{-4}$ ($C \approx 0.1589$) and $\gamma = 0.1$.
+  \end{itemize}
+
+  % =====================================================================
+  \section{Results and Benchmarking}
+
+  \begin{table*}[t]
+    \centering
+    \caption{Consolidated Headline Results on Unseen Test Split ($n=15,114$).}
+    \label{tab:results}
+    \resizebox{\textwidth}{!}{%
+    \begin{tabular}{@{}lcccccccc@{}}
+      \toprule
+      & \multicolumn{3}{c}{\textbf{Task A: Log-Price Regression}} & \multicolumn{4}{c}{\textbf{Task B: Price-Tier Classification}} & \textbf{Compute} \\
+      \cmidrule(lr){2-4} \cmidrule(lr){5-8} \cmidrule(lr){9-9}
+      Model & RMSE $\downarrow$ & MAE $\downarrow$ & $R^2 \uparrow$ & Accuracy $\uparrow$ & $F_1$-Score $\uparrow$ & ROC-AUC $\uparrow$ & PR-AUC $\uparrow$ & Fit Time (s) \\
+      \midrule
+      \textbf{Ours: Decision Tree}  & \textbf{0.5036} & \textbf{0.2495} & \textbf{0.5992} & \textbf{0.9079} & \textbf{0.9131} & \textbf{0.9675} & \textbf{0.9671} & 4.53 s \\
+      scikit-learn Decision Tree   & 0.5026 & 0.2493 & 0.6007 & 0.9078 & 0.9131 & 0.9674 & 0.9671 & 0.98 s \\
+      \midrule
+      \textbf{Ours: Pegasos SVM (RFF)} & --- & --- & --- & 0.8439 & 0.8512 & \textbf{0.9271} & \textbf{0.9375} & 10.90 s \\
+      scikit-learn SGD Baseline    & --- & --- & --- & \textbf{0.8478} & \textbf{0.8578} & 0.9198 & 0.9255 & 0.63 s \\
+      \midrule
+      \textit{Bonus: Ours Ridge (Normal Eq.)} & 0.5172 & 0.3169 & 0.5773 & --- & --- & --- & --- & 0.09 s \\
+      \textit{Bonus: Ours SVR (Sub-gradient)} & 0.5086 & 0.3132 & 0.5911 & --- & --- & --- & --- & 8.03 s \\
+      \textit{Bonus: Ours Random Forest (46 trees)} & 0.4828 & --- & --- & --- & --- & --- & --- & --- \\
+      \textit{Bonus: Ours Gradient Boosting (200 trees)} & \textbf{0.4552} & --- & --- & --- & --- & --- & --- & --- \\
+      \bottomrule
+    \end{tabular}%
+    }
+  \end{table*}
+
+  \subsection{Do Our Models Match scikit-learn?}
+  Table~\ref{tab:results} shows that our from-scratch decision tree gets very close to scikit-learn's optimized implementation. On Task A the RMSE differs by only $0.0010$ ($0.5036$ vs $0.5026$), and the $R^2$ values are almost the same ($0.5992$ vs $0.6007$). On Task B the results are practically the same: the same $F_1$ ($0.9131$), the same PR-AUC ($0.9671$), and almost the same ROC-AUC ($0.9675$ vs $0.9674$).
+
+  On Task B our Pegasos SVM with RFF reaches an $F_1$ of $0.8512$. It ranks examples better than scikit-learn's linear SGD classifier (ROC-AUC $0.9271$ vs $0.9198$, PR-AUC $0.9375$ vs $0.9255$), which suggests that the non-linear Fourier features help. The SGD baseline is still slightly better on accuracy and $F_1$, though.
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/benchmark_tree.png}
+    \caption{Comparison between our decision tree and scikit-learn on the Task A and Task B test splits.}
+    \label{fig:benchmark_tree}
+  \end{figure}
+
+  \subsection{Cross-Validation}
+  To check that our results do not depend on one lucky split, we ran 5-fold cross-validation on the training data ($62,922$ samples):
+  \begin{itemize}
+    \item \textbf{Regression RMSE}: Ours $0.2719 \pm 0.0083$, scikit-learn $0.2715 \pm 0.0086$.
+    \item \textbf{Regression $R^2$}: Ours $0.8059 \pm 0.0085$, scikit-learn $0.8064 \pm 0.0088$.
+    \item \textbf{Classification $F_1$}: Ours $0.9123 \pm 0.0016$, scikit-learn $0.9124 \pm 0.0013$.
+    \item \textbf{Classification ROC-AUC}: Ours $0.9714 \pm 0.0012$, scikit-learn $0.9713 \pm 0.0010$.
+  \end{itemize}
+  The standard deviations are small (below 0.002 for classification), so performance does not change much between folds.
+
+  \subsection{Hyperparameter Sensitivity and Bias--Variance Tradeoff}
+  Figure~\ref{fig:tree_depth} shows how tree depth affects the model. For very deep trees ($d \ge 15$), training ROC-AUC goes up to $0.9996$ while validation ROC-AUC falls to $0.9252$, which is a clear sign of overfitting. Setting a minimum leaf size of $n_{\text{leaf}} = 10$ at $d = 12$ removes the overconfident leaves that contain a single sample, and raises validation ROC-AUC to $0.9660$.
+
+
+  For the Pegasos SVM, the $(\lambda, \gamma)$ grid shows that a very large regularization ($\lambda \ge 0.1$) over-smooths the model: the weights shrink to almost zero ($\|\mathbf{w}\| \to 0$) and $F_1$ drops to about 0. The best balance was a small $\lambda$ with a moderate kernel scale ($\lambda = 10^{-4}$, $\gamma = 0.1$). It has a margin width of $2/\|\mathbf{w}\| = 0.1041$ and 23,840 margin support vectors, and gives the best validation $F_1$ of $0.8370$.
+
+  \subsection{Error Analysis by Property Type}
+  When we split the Task A test predictions by property type, the model works very differently across categories:
+  \begin{itemize}
+    \item \textbf{Apartments}: Predictions are accurate and consistent for \textit{Yeni tikili} ($n = 8,616$, RMSE $0.218$, $R^2 = 0.838$) and \textit{Köhnə tikili} ($n = 2,753$, RMSE $0.201$, $R^2 = 0.735$).
+    \item \textbf{Commercial and land}: Errors are much larger for \textit{Obyekt} ($n = 623$, RMSE $1.256$, $R^2 = 0.062$) and \textit{Torpaq} ($n = 737$, RMSE $1.483$, $R^2 = 0.281$). Likely reasons are missing information such as street frontage, zoning permits, and access to utilities.
+  \end{itemize}
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/tree_overfitting_depth.png}
+    \caption{Bias-variance tradeoff for the depth sweep ($d \in [1, 18]$). Training ROC-AUC gets close to $0.9996$, while validation ROC-AUC drops for deep trees because the tree memorizes the training leaves.}
+    \label{fig:tree_depth}
+  \end{figure}
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/pr_curve.png}
+    \caption{Precision-Recall curves on the test set for Task B. Both tree models keep high precision at high recall.}
+    \label{fig:pr_curve}
+  \end{figure}
+
+  \begin{figure}[ht]
+    \centering
+    \includegraphics[width=\linewidth]{figures/tree_feature_importances.png}
+    \caption{Top 15 features by Mean Decrease in Impurity (MDI). Living area, number of rooms, and the coordinates of premium Baku districts are the most important.}
+    \label{fig:feature_importance}
+  \end{figure}
+
+  % =====================================================================
+  \section{Discussion and Limitations}
+  Our implementations perform close to the scikit-learn baselines, but they have some limits:
+  \begin{enumerate}
+    \item \textbf{Axis-aligned splits}: A tree can only split along one feature at a time, so it has trouble with diagonal patterns such as price gradients across Baku.
+    \item \textbf{Limited random features}: Random Fourier Features allow non-linear boundaries, but $D = 256$ is limited by computing time, so very detailed local price patterns are only approximated.
+    \item \textbf{Rare listings}: For luxury properties (above 500,000 AZN) and sparse rural regions (for example Astara and Gədəbəy), there are few examples, so prediction errors are larger.
+  \end{enumerate}
+
+  % =====================================================================
+  \section{Conclusion}
+  We built a recursive decision tree and a primal Pegasos SVM with Random Fourier Features from scratch, and tested them on real-estate data from \texttt{bina.az}. Our tree reaches results very close to scikit-learn ($F_1 = 0.9131$, and tree RMSE $0.5036$ vs $0.5026$). Cross-validation and the bias-variance experiments show that the results are stable. In the future we want to add spatial embeddings from geographic graph neural networks, and oblique (diagonal) splits in the tree.
+
+  % =====================================================================
+  \section*{Tools and Acknowledgements}
+  We used AI coding assistants for template formatting, exploratory visualization scripts, and improving the documentation. The data comes from public listings on \texttt{bina.az}.
+
+  % =====================================================================
+  \begin{thebibliography}{9}
+  \bibitem{pegasos}
+  S.~Shalev-Shwartz, Y.~Singer, N.~Srebro, and A.~Cotter,
+  ``Pegasos: primal estimated sub-gradient solver for SVM,''
+  \emph{Mathematical Programming}, vol.~127, no.~1, pp.~3--30, 2011.
+
+  \bibitem{breiman1984}
+  L.~Breiman, J.~Friedman, C.~J.~Stone, and R.~A.~Olshen,
+  \emph{Classification and Regression Trees}, CRC press, 1984.
+
+  \bibitem{rahimi2007}
+  A.~Rahimi and B.~Recht,
+  ``Random features for large-scale kernel machines,''
+  in \emph{Advances in Neural Information Processing Systems (NeurIPS)}, vol.~20, 2007.
+
+  \bibitem{pedregosa2011}
+  F.~Pedregosa et~al.,
+  ``Scikit-learn: Machine learning in Python,''
+  \emph{Journal of Machine Learning Research}, vol.~12, pp.~2825--2830, 2011.
+  \end{thebibliography}
+
+  \end{document}

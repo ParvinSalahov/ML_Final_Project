@@ -59,6 +59,7 @@ except ImportError:
     import linear_baselines as lb
     import ensembles as en
 
+
 def main() -> None:
     figures_dir = "report/figures"
     os.makedirs(figures_dir, exist_ok=True)
@@ -66,17 +67,15 @@ def main() -> None:
     quick_mode = "--quick" in sys.argv or "--skip-tuning" in sys.argv
 
     start_total_time = time.time()
-    print("=" * 80)
-    print(" MLE-AI-201 MACHINE LEARNING FINAL PROJECT — REPRODUCIBILITY ORCHESTRATOR")
+    print("\nMle-ai-201 machine learning final project - reproducibility orchestrator")
     print(
-        f" Mode: {'QUICK (skips grid sweeps)' if quick_mode else 'FULL (reproduces all 19 figures & tables)'}"
+        f"Mode: {'Quick (skips grid sweeps)' if quick_mode else 'Full (reproduces all 19 figures & tables)'}\n"
     )
-    print("=" * 80)
 
     # -------------------------------------------------------------------------
     # 1. Data Loading, Cleaning & Split
     # -------------------------------------------------------------------------
-    print("\n[Step 1/6] Loading and preparing data (bina.az real-estate dataset)...")
+    print("\n[Step 1/6] Loading and preparing data (house_sale dataset)...")
     t0 = time.time()
     tr, va, te = dp.prepare_data(seed=dp.SEED)
     X_tr_df, y_tr_price, feat_names, fit_info = dp.make_features(tr)
@@ -114,7 +113,7 @@ def main() -> None:
         f"  - Task B Threshold: log(price) = {threshold:.4f} (~{np.expm1(threshold):,.0f} AZN)"
     )
 
-    print("\n  Exploratory data analysis (train split only)...") 
+    print("\n  Exploratory data analysis (train split only)...")
     ef.run_explore(tr, y_tr_cls, y_va_cls, y_te_cls)
 
     # -------------------------------------------------------------------------
@@ -157,34 +156,62 @@ def main() -> None:
         f"  - Sklearn Tree Regressor: RMSE = {sk_rmse:.4f} | MAE = {sk_mae:.4f} | R2 = {sk_r2:.4f} (fit: {sk_reg_fit_time:.2f}s)"
     )
 
-    print("\n[Step 2b] Problem 8 (bonus): from-scratch linear baselines (Task A)...")
+    print("\n[Step 2b] Problem 8 (bonus): From-scratch linear baselines (task a)...")
     y_va_arr = y_va_price.to_numpy(dtype=float)
     lin = lb.run_linear_baselines(
-        X_tr_svm, y_tr_arr, X_va_svm, y_va_arr, X_te_svm, y_te_arr,
-        figures_dir=figures_dir, quick=quick_mode, seed=dp.SEED,
+        X_tr_svm,
+        y_tr_arr,
+        X_va_svm,
+        y_va_arr,
+        X_te_svm,
+        y_te_arr,
+        figures_dir=figures_dir,
+        quick=quick_mode,
+        seed=dp.SEED,
     )
     lin.pop("_params")
-    lb.print_task_a_table({
-        "Ours: Decision Tree": {"RMSE": c_rmse, "MAE": c_mae, "R2": c_r2, "Fit Time (s)": c_reg_fit_time},
-        "scikit-learn Tree": {"RMSE": sk_rmse, "MAE": sk_mae, "R2": sk_r2, "Fit Time (s)": sk_reg_fit_time},
-        **lin,
-    })
+    lb.print_task_a_table(
+        {
+            "Ours: Decision Tree": {
+                "RMSE": c_rmse,
+                "MAE": c_mae,
+                "R2": c_r2,
+                "Fit Time (s)": c_reg_fit_time,
+            },
+            "scikit-learn Tree": {
+                "RMSE": sk_rmse,
+                "MAE": sk_mae,
+                "R2": sk_r2,
+                "Fit Time (s)": sk_reg_fit_time,
+            },
+            **lin,
+        }
+    )
 
-    print("\n[Step 2c] Optional bonus: ensembles from scratch (Task A)...")
+    print("\n[Step 2c] Optional bonus: Ensembles from scratch (task a)...")
     ens = en.run_ensembles(
-        DecisionTree, X_tr, y_tr_arr, X_va, y_va_arr, X_te, y_te_arr,
-        figures_dir=figures_dir, quick=quick_mode, seed=dp.SEED, tree_test_rmse=c_rmse,
+        DecisionTree,
+        X_tr,
+        y_tr_arr,
+        X_va,
+        y_va_arr,
+        X_te,
+        y_te_arr,
+        figures_dir=figures_dir,
+        quick=quick_mode,
+        seed=dp.SEED,
+        tree_test_rmse=c_rmse,
     )
 
     d = te.assign(pred=c_reg_pred, y=y_te_arr)
-    print("\n" + "=" * 70)
-    print(" Task A: Decision Tree scores per category (test set)")
-    print("=" * 70)
+    print("\nTask a: Decision tree scores per category (test set)")
     for cat, g in d.groupby("category"):
-        print(f"{cat:<22} n={len(g):>6,} | RMSE={ev.rmse(g['y'], g['pred']):.3f} | R2={ev.r2(g['y'], g['pred']):.3f}")
-    print("-" * 70)
-    print(f"{'ALL':<22} n={len(d):>6,} | RMSE={ev.rmse(d['y'], d['pred']):.3f} | R2={ev.r2(d['y'], d['pred']):.3f}")
-    print("=" * 70 + "\n")
+        print(
+            f"  {cat:<22} n={len(g):>6,} | RMSE={ev.rmse(g['y'], g['pred']):.3f} | R2={ev.r2(g['y'], g['pred']):.3f}"
+        )
+    print(
+        f"  {'ALL':<22} n={len(d):>6,} | RMSE={ev.rmse(d['y'], d['pred']):.3f} | R2={ev.r2(d['y'], d['pred']):.3f}\n"
+    )
 
     # -------------------------------------------------------------------------
     # 3. Task B — Price Tier Classification
@@ -226,7 +253,7 @@ def main() -> None:
             "learning_rate_scale": 1.0,
             "n_components": 256,
             "use_rff": True,
-    }
+        }
     custom_svm = PegasosSVM(
         lambda_=svm_config["lambda_"],
         gamma=svm_config["gamma"],
@@ -235,8 +262,7 @@ def main() -> None:
         n_components=svm_config["n_components"],
         use_rff=svm_config["use_rff"],
         random_state=dp.SEED,
-    
-).fit(X_tr_svm, y_tr_cls.to_numpy(dtype=int))
+    ).fit(X_tr_svm, y_tr_cls.to_numpy(dtype=int))
     c_svm_fit_time = time.time() - t0
     c_svm_pred = custom_svm.predict(X_te_svm)
     c_svm_scores = custom_svm.decision_function(X_te_svm)
@@ -274,7 +300,7 @@ def main() -> None:
     # -------------------------------------------------------------------------
     # 4. Problem 5 Benchmark Parity Plot
     # -------------------------------------------------------------------------
-    print("\n[Step 4/6] Generating Problem 5 benchmark parity plot...")
+    print("\n[Step 4/6] Generating problem 5 benchmark parity plot...")
     task_b_res = {
         "custom": {
             "Accuracy": float(np.mean(c_tree_pred == y_te_cls_arr)),
@@ -321,13 +347,13 @@ def main() -> None:
             X_tr, y_tr_cls.to_numpy(dtype=int), y_tr_arr, n_splits=5
         )
         bm.run_svm_benchmark(
-        lambda_=svm_config["lambda_"],
-        gamma=svm_config["gamma"],
-        n_epochs=svm_config["n_epochs"],
-        learning_rate_scale=svm_config["learning_rate_scale"],
-        n_components=svm_config["n_components"],
-        n_splits=5,
-    )
+            lambda_=svm_config["lambda_"],
+            gamma=svm_config["gamma"],
+            n_epochs=svm_config["n_epochs"],
+            learning_rate_scale=svm_config["learning_rate_scale"],
+            n_components=svm_config["n_components"],
+            n_splits=5,
+        )
     else:
         print("  - Skipping 5-fold CV uncertainty estimation (--quick active).")
 
@@ -335,19 +361,19 @@ def main() -> None:
     # 5. Problem 4 Tuning Plots (or skipped in quick mode)
     # -------------------------------------------------------------------------
     if not quick_mode:
-        print("\n[Step 5/6] Generating Problem 4 hyperparameter tuning figures...")
+        print("\n[Step 5/6] Generating problem 4 hyperparameter tuning figures...")
         print(
-            "  - Running Decision Tree tuning sweeps (depth, Gini vs entropy, min_samples_leaf)..."
+            "  - Running decision tree tuning sweeps (depth, gini vs entropy, min_samples_leaf)..."
         )
         tune.run_tree_tuning()
     else:
-        print("\n[Step 5/6] Skipping Problem 4 tuning sweeps (--quick active).")
+        print("\n[Step 5/6] Skipping problem 4 tuning sweeps (--quick active).")
 
     # -------------------------------------------------------------------------
     # 6. Problem 6 Evaluation Figures & Final Table
     # -------------------------------------------------------------------------
     print(
-        "\n[Step 6/6] Generating Problem 6 evaluation figures and consolidated results table..."
+        "\n[Step 6/6] Generating problem 6 evaluation figures and consolidated results table..."
     )
     ev.plot_feature_importances(
         custom_tree_cls.feature_importances_,
@@ -424,8 +450,7 @@ def main() -> None:
     }
     ev.compare(comparison_table)
 
-    print("LaTeX Table Snippet for report/report.tex (Table I):")
-    print("-" * 65)
+    print("\nLatex table snippet for report/report.tex (table i):")
     print(r"\begin{tabular}{@{}lcccc@{}}")
     print(r"  \toprule")
     print(
@@ -445,10 +470,9 @@ def main() -> None:
         f"  scikit-learn SGD      & ---    & ---    & {sk_sgd_f1:.4f} & {ev.pr_auc(y_te_cls_arr, sk_sgd_scores):.4f} \\\\"
     )
     print(r"  \bottomrule")
-    print(r"\end{tabular}")
-    print("-" * 65)
+    print(r"\end{tabular}" + "\n")
 
-    print(f"\nCompleted in {time.time() - start_total_time:.2f}s!")
+    print(f"\nCompleted in {time.time() - start_total_time:.2f}s")
     print(f"Figures saved in {figures_dir}/:")
     for f in sorted(os.listdir(figures_dir)):
         if f.endswith((".png", ".pdf")):
