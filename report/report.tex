@@ -129,6 +129,13 @@
     \item \textbf{Task B (Binary Tier Classification)}: Distinguish premium ($y_{\text{tier}}=1$) from standard ($y_{\text{tier}}=0$) properties based on the training split median ($\tau = 12.2061$, $\approx 200,000$ AZN). The test set exhibits a balanced split (54.2\% premium vs. 45.8\% standard).
   \end{itemize}
 
+  \begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/explore_price_distribution.png}
+    \caption{Exploratory distribution of raw listing prices (left, severe positive skewness) versus variance-stabilized log-transformed prices $\log(1 + \text{price})$ (right) on the training corpus.}
+    \label{fig:price_dist}
+  \end{figure}
+
   % =====================================================================
   \section{Methodology}
 

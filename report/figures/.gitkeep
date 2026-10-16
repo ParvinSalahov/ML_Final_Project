@@ -1,0 +1,10 @@
+# Report Figures Manifest (Figures directly embedded in report/report.tex)
+
+# 1. EDA / Data Section:
+explore_price_distribution.png
+
+# 2. Results & Benchmarking Section:
+benchmark_tree.png
+tree_overfitting_depth.png
+pr_curve.png
+tree_feature_importances.png
