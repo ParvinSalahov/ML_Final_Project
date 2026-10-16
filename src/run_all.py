@@ -214,14 +214,29 @@ def main() -> None:
     sk_tree_scores = sk_tree_cls.predict_proba(X_te)[:, 1]
 
     t0 = time.time()
+    if not quick_mode:
+        svm_tuning = tune.run_svm_tuning()
+        svm_config = svm_tuning["best_config"]
+    else:
+        # Quick mode skips tuning; use a fixed configuration for a quick run.
+        svm_config = {
+            "lambda_": 1e-4,
+            "gamma": 0.1,
+            "n_epochs": 30,
+            "learning_rate_scale": 1.0,
+            "n_components": 256,
+            "use_rff": True,
+    }
     custom_svm = PegasosSVM(
-        lambda_=1e-4,
-        gamma=0.1,
-        n_epochs=30,
-        n_components=256,
-        use_rff=True,
+        lambda_=svm_config["lambda_"],
+        gamma=svm_config["gamma"],
+        n_epochs=svm_config["n_epochs"],
+        learning_rate_scale=svm_config["learning_rate_scale"],
+        n_components=svm_config["n_components"],
+        use_rff=svm_config["use_rff"],
         random_state=dp.SEED,
-    ).fit(X_tr_svm, y_tr_cls.to_numpy(dtype=int))
+    
+).fit(X_tr_svm, y_tr_cls.to_numpy(dtype=int))
     c_svm_fit_time = time.time() - t0
     c_svm_pred = custom_svm.predict(X_te_svm)
     c_svm_scores = custom_svm.decision_function(X_te_svm)
@@ -305,6 +320,14 @@ def main() -> None:
         bm.run_cross_validation_uncertainty(
             X_tr, y_tr_cls.to_numpy(dtype=int), y_tr_arr, n_splits=5
         )
+        bm.run_svm_benchmark(
+        lambda_=svm_config["lambda_"],
+        gamma=svm_config["gamma"],
+        n_epochs=svm_config["n_epochs"],
+        learning_rate_scale=svm_config["learning_rate_scale"],
+        n_components=svm_config["n_components"],
+        n_splits=5,
+    )
     else:
         print("  - Skipping 5-fold CV uncertainty estimation (--quick active).")
 
@@ -317,8 +340,6 @@ def main() -> None:
             "  - Running Decision Tree tuning sweeps (depth, Gini vs entropy, min_samples_leaf)..."
         )
         tune.run_tree_tuning()
-        print("  - Running Pegasos SVM tuning sweeps (lambda x gamma grid)...")
-        tune.run_svm_tuning()
     else:
         print("\n[Step 5/6] Skipping Problem 4 tuning sweeps (--quick active).")
 

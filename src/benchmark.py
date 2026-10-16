@@ -446,6 +446,7 @@ def run_svm_cross_validation(
     lambda_: float = 1e-3,
     gamma: float = 1.0,
     n_epochs: int = 10,
+    learning_rate_scale: float = 1.0,
     n_components: int = 256,
     n_splits: int = 5,
 ) -> dict:
@@ -484,6 +485,7 @@ def run_svm_cross_validation(
             use_rff=True,
             n_components=n_components,
             gamma=gamma,
+            learning_rate_scale=learning_rate_scale,    
         ).fit(X_fold_train_scaled, y_fold_train)
 
         custom_pred = custom_model.predict(X_fold_val_scaled)
@@ -564,6 +566,7 @@ def run_svm_benchmark(
     lambda_: float = 1e-3,
     gamma: float = 1.0,
     n_epochs: int = 10,
+    learning_rate_scale: float = 1.0,
     n_components: int = 256,
     n_splits: int = 5,
 ) -> dict:
@@ -609,6 +612,7 @@ def run_svm_benchmark(
         gamma=gamma,
         n_epochs=n_epochs,
         n_components=n_components,
+        learning_rate_scale=learning_rate_scale,
         n_splits=n_splits,
     )
 
@@ -624,6 +628,7 @@ def run_svm_benchmark(
         use_rff=True,
         n_components=n_components,
         gamma=gamma,
+        learning_rate_scale=learning_rate_scale,
     )
 
     start = time.time()
