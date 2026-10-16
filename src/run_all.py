@@ -45,6 +45,7 @@ try:
     from . import evaluate as ev
     from . import benchmark as bm
     from . import tune
+    from . import explore_figures as ef
 except ImportError:
     import data_prep as dp
     from decision_tree import DecisionTree
@@ -52,6 +53,7 @@ except ImportError:
     import evaluate as ev
     import benchmark as bm
     import tune
+    import explore_figures as ef
 
 
 def main() -> None:
@@ -108,6 +110,9 @@ def main() -> None:
     print(
         f"  - Task B Threshold: log(price) = {threshold:.4f} (~{np.expm1(threshold):,.0f} AZN)"
     )
+
+    print("\n  Exploratory data analysis (train split only)...") 
+    ef.run_explore(tr, y_tr_cls, y_va_cls, y_te_cls)
 
     # -------------------------------------------------------------------------
     # 2. Task A — Price Regression

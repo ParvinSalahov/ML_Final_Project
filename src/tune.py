@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from .svm import PegasosSVM
+from svm import PegasosSVM
 
 # Ensure project root and src/ are in sys.path when run directly
 _current_dir = Path(__file__).resolve().parent
