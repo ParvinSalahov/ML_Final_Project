@@ -16,7 +16,7 @@ import time
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-from svm import PegasosSVM
+
 
 # Ensure project root and src/ are in sys.path when run directly
 _current_dir = Path(__file__).resolve().parent
@@ -28,15 +28,18 @@ for _p in [str(_project_root), str(_current_dir)]:
 try:
     from . import data_prep as dp
     from .decision_tree import DecisionTree
+    from .svm import PegasosSVM
     from . import evaluate as ev
 except ImportError:
     try:
         from src import data_prep as dp
         from src.decision_tree import DecisionTree
         from src import evaluate as ev
+        from src.svm import PegasosSVM
     except ImportError:
         import data_prep as dp
         from decision_tree import DecisionTree
+        from svm import PegasosSVM
         import evaluate as ev
 
 
@@ -462,71 +465,110 @@ def run_svm_tuning() -> dict:
 
     lambda_values = [1e-5, 1e-4, 1e-3, 1e-2, 0.1, 1.0]
     gamma_values = [0.1, 1.0, 10.0]
-    n_epochs = 30
     n_components = 256
 
+    # Use validation data to select epochs and learning-rate scale,
+    # holding lambda and gamma fixed during each comparison.
+    reference_lambda = 1e-3
+    reference_gamma = 1.0
+    epoch_values = [10, 30, 60]
+    learning_rate_scales = [0.5, 1.0, 2.0]
+
+
+    def evaluate_svm(lambda_, gamma, epochs, learning_rate_scale):
+        model = PegasosSVM(
+            lambda_=lambda_,
+            n_epochs=epochs,
+            learning_rate_scale=learning_rate_scale,
+            random_state=dp.SEED,
+            use_rff=True,
+            n_components=n_components,
+            gamma=gamma,
+        ).fit(X_tr, y_tr)
+
+        val_pred = model.predict(X_val)
+        val_scores = model.decision_function(X_val)
+        precision, recall, f1 = ev.precision_recall_f1(y_val, val_pred)
+        auc = ev.roc_auc(y_val, val_scores)
+
+        return {
+            "lambda_": lambda_,
+            "gamma": gamma,
+            "n_epochs": epochs,
+            "learning_rate_scale": learning_rate_scale,
+            "model": model,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "auc": auc,
+            "weight_norm": model.weight_norm_,
+            "margin_width": model.margin_width_,
+        }
+
+
+    # Change epoch count while holding other settings fixed.
+    epoch_results = [
+        evaluate_svm(reference_lambda, reference_gamma, epochs, 1.0)
+        for epochs in epoch_values
+    ]
+    best_epoch_result = max(epoch_results, key=lambda r: (r["f1"], r["auc"]))
+    selected_epochs = best_epoch_result["n_epochs"]
+
+    # Change learning-rate scale while holding the selected epoch count fixed.
+    learning_rate_results = [
+        evaluate_svm(reference_lambda, reference_gamma, selected_epochs, scale)
+        for scale in learning_rate_scales
+    ]
+    best_learning_rate_result = max(
+        learning_rate_results,
+        key=lambda r: (r["f1"], r["auc"]),
+    )
+    selected_learning_rate = best_learning_rate_result["learning_rate_scale"]
+
+    print("\nEpoch comparison (validation data)")
+    for result in epoch_results:
+        print(
+            f"epochs={result['n_epochs']:3d} | "
+            f"F1={result['f1']:.4f}, AUC={result['auc']:.4f}, "
+            f"objective first/last="
+            f"{result['model'].objective_history_[0]:.6f}/"
+            f"{result['model'].objective_history_[-1]:.6f}, "
+            f"margin={result['margin_width']:.4f}"
+        )
+
+    print("\nLearning-rate comparison (validation data)")
+    for result in learning_rate_results:
+        print(
+            f"learning_rate_scale={result['learning_rate_scale']:g} | "
+            f"F1={result['f1']:.4f}, AUC={result['auc']:.4f}, "
+            f"objective first/last="
+            f"{result['model'].objective_history_[0]:.6f}/"
+            f"{result['model'].objective_history_[-1]:.6f}, "
+            f"margin={result['margin_width']:.4f}"
+        )
+
+    # Sweep lambda and RFF gamma using the selected epoch and learning-rate values.
     results = []
     for lambda_ in lambda_values:
         for gamma in gamma_values:
-            model = PegasosSVM(
-                lambda_=lambda_,
-                n_epochs=n_epochs,
-                random_state=dp.SEED,
-                use_rff=True,
-                n_components=n_components,
-                gamma=gamma,
-            ).fit(X_tr, y_tr)
-
-            val_pred = model.predict(X_val)
-            val_scores = model.decision_function(X_val)
-            precision, recall, f1 = ev.precision_recall_f1(y_val, val_pred)
-            auc = ev.roc_auc(y_val, val_scores)
-
-            result = {
-                "lambda_": lambda_,
-                "gamma": gamma,
-                "model": model,
-                "precision": precision,
-                "recall": recall,
-                "f1": f1,
-                "auc": auc,
-                "weight_norm": model.weight_norm_,
-                "margin_width": model.margin_width_,
-            }
+            result = evaluate_svm(
+                lambda_,
+                gamma,
+                selected_epochs,
+                selected_learning_rate,
+            )
             results.append(result)
-
             print(
                 f"lambda={lambda_:.1e}, gamma={gamma:g} | "
-                f"Val F1={f1:.4f}, AUC={auc:.4f}, "
-                f"||w||={model.weight_norm_:.4f}, "
-                f"margin={model.margin_width_:.4f}"
+                f"F1={result['f1']:.4f}, AUC={result['auc']:.4f}, "
+                f"margin={result['margin_width']:.4f}"
             )
 
-    # Select only from validation F1, using validation AUC to break ties.
+    # Select once, after all lambda/gamma combinations have been evaluated.
     best = max(results, key=lambda r: (r["f1"], r["auc"]))
     best_model = best["model"]
 
-    # For this objective, lambda = 1 / (n * C).
-    equivalent_C = 1.0 / (len(y_tr) * best["lambda_"])
-
-    print(" PROBLEM 4(c) FINAL SVM CONFIGURATION (from Validation Evidence)")
-    print(f"  lambda            : {best['lambda_']:.1e}")
-    print(f"  approx. C (=1/nλ) : {equivalent_C:.6g}")
-    print(f"  RFF gamma         : {best['gamma']:g}")
-    print(f"  n_epochs          : {n_epochs}")
-    print(f"  n_components      : {n_components}")
-    print(f"  use_rff           : True")
-    print(f"  random_state      : {dp.SEED}")
-    print(f"  Validation F1     : {best['f1']:.4f}")
-    print(f"  Validation AUC    : {best['auc']:.4f}")
-    print(f"  weight norm ||w|| : {best['weight_norm']:.4f}")
-    print(f"  margin width 2/||w||: {best['margin_width']:.4f}")
-    print(
-        f"  support vectors   : "
-        f"{len(best_model.support_vector_indices_)} / {len(y_tr)}"
-    )
-
-    # Plot 1: how lambda/gamma choices trade validation F1 against margin width.
+    # Plot validation F1 by lambda and gamma.
     fig, ax = plt.subplots(figsize=(8, 5), dpi=300)
     for gamma in gamma_values:
         gamma_results = [r for r in results if r["gamma"] == gamma]
@@ -601,7 +643,7 @@ def run_svm_tuning() -> dict:
     plt.ylabel("Regularized hinge-loss  J(w)")
     plt.title(
         f"Pegasos Objective Convergence\n"
-        f"(lambda={best['lambda_']:.1e}, gamma={best['gamma']:g}, {n_epochs} epochs)"
+        f"(lambda={best['lambda_']:.1e}, gamma={best['gamma']:g}, {best['n_epochs']} epochs, learning_rate_scale={best['learning_rate_scale']:.1e})"
     )
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.tight_layout()
@@ -614,7 +656,8 @@ def run_svm_tuning() -> dict:
         "best_config": {
             "lambda_": best["lambda_"],
             "gamma": best["gamma"],
-            "n_epochs": n_epochs,
+            "n_epochs": best["n_epochs"],
+            "learning_rate_scale": best["learning_rate_scale"],
             "use_rff": True,
             "n_components": n_components,
         },
