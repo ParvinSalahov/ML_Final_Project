@@ -39,6 +39,7 @@ from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 from sklearn.linear_model import SGDClassifier
 
 try:
+    from . import linear_baselines as lb
     from . import data_prep as dp
     from .decision_tree import DecisionTree
     from .svm import PegasosSVM
@@ -54,7 +55,7 @@ except ImportError:
     import benchmark as bm
     import tune
     import explore_figures as ef
-
+    import linear_baselines as lb
 
 def main() -> None:
     figures_dir = "report/figures"
@@ -90,8 +91,8 @@ def main() -> None:
     X_te = X_te_df.to_numpy(dtype=float)
 
     # Standardize features for SVM
-    X_tr_sc, X_va_sc = dp.standardize(X_tr_df, X_va_df)
-    _, X_te_sc = dp.standardize(X_tr_df, X_te_df)
+    X_tr_c, X_va_c, X_te_c = dp.clip_to_train_range(X_tr_df, X_va_df, X_te_df)
+    X_tr_sc, X_va_sc, X_te_sc = dp.standardize(X_tr_c, X_va_c, X_te_c)
     X_tr_svm = X_tr_sc.to_numpy(dtype=float)
     X_va_svm = X_va_sc.to_numpy(dtype=float)
     X_te_svm = X_te_sc.to_numpy(dtype=float)
@@ -153,6 +154,29 @@ def main() -> None:
     print(
         f"  - Sklearn Tree Regressor: RMSE = {sk_rmse:.4f} | MAE = {sk_mae:.4f} | R2 = {sk_r2:.4f} (fit: {sk_reg_fit_time:.2f}s)"
     )
+
+    print("\n[Step 2b] Problem 8 (bonus): from-scratch linear baselines (Task A)...")
+    y_va_arr = y_va_price.to_numpy(dtype=float)
+    lin = lb.run_linear_baselines(
+        X_tr_svm, y_tr_arr, X_va_svm, y_va_arr, X_te_svm, y_te_arr,
+        figures_dir=figures_dir, quick=quick_mode, seed=dp.SEED,
+    )
+    lin.pop("_params")
+    lb.print_task_a_table({
+        "Ours: Decision Tree": {"RMSE": c_rmse, "MAE": c_mae, "R2": c_r2, "Fit Time (s)": c_reg_fit_time},
+        "scikit-learn Tree": {"RMSE": sk_rmse, "MAE": sk_mae, "R2": sk_r2, "Fit Time (s)": sk_reg_fit_time},
+        **lin,
+    })
+
+    d = te.assign(pred=c_reg_pred, y=y_te_arr)
+    print("\n" + "=" * 70)
+    print(" Task A: Decision Tree scores per category (test set)")
+    print("=" * 70)
+    for cat, g in d.groupby("category"):
+        print(f"{cat:<22} n={len(g):>6,} | RMSE={ev.rmse(g['y'], g['pred']):.3f} | R2={ev.r2(g['y'], g['pred']):.3f}")
+    print("-" * 70)
+    print(f"{'ALL':<22} n={len(d):>6,} | RMSE={ev.rmse(d['y'], d['pred']):.3f} | R2={ev.r2(d['y'], d['pred']):.3f}")
+    print("=" * 70 + "\n")
 
     # -------------------------------------------------------------------------
     # 3. Task B — Price Tier Classification

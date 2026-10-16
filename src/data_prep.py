@@ -158,6 +158,14 @@ def clean(df):
     return df
 
 
+def clip_to_train_range(X_tr, *others):
+    lo = X_tr.min()
+    hi = X_tr.max()
+    clipped = [X_tr.clip(lower=lo, upper=hi, axis=1)]
+    for X in others:
+        clipped.append(X.clip(lower=lo, upper=hi, axis=1))
+    return tuple(clipped)
+
 def impute_rooms(df, ref):
     df = df.copy()
     mask = df["rooms"].isna() & df["area"].notna()
