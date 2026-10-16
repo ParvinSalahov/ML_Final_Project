@@ -250,6 +250,8 @@ def run_cross_validation_uncertainty(
     sk_f1s = []
     custom_aucs = []
     sk_aucs = []
+    custom_rmses = []
+    sk_rmses = []
     custom_r2s = []
     sk_r2s = []
 
@@ -300,21 +302,27 @@ def run_cross_validation_uncertainty(
             random_state=dp.SEED,
         ).fit(X_f_tr, y_f_tr_p)
 
-        custom_r2s.append(ev.r2(y_f_va_p, c_reg.predict(X_f_va)))
-        sk_r2s.append(ev.r2(y_f_va_p, sk_reg.predict(X_f_va)))
+        c_pred_p = c_reg.predict(X_f_va)
+        s_pred_p = sk_reg.predict(X_f_va)
+        custom_rmses.append(ev.rmse(y_f_va_p, c_pred_p))
+        sk_rmses.append(ev.rmse(y_f_va_p, s_pred_p))
+        custom_r2s.append(ev.r2(y_f_va_p, c_pred_p))
+        sk_r2s.append(ev.r2(y_f_va_p, s_pred_p))
 
         print(
-            f" Fold {fold + 1}/{n_splits} | Custom F1: {c_f1:.4f}, AUC: {c_auc:.4f}, R2: {custom_r2s[-1]:.4f} | "
-            f"Sklearn F1: {s_f1:.4f}, AUC: {s_auc:.4f}, R2: {sk_r2s[-1]:.4f}"
+            f" Fold {fold + 1}/{n_splits} | Custom F1: {c_f1:.4f}, AUC: {c_auc:.4f}, RMSE: {custom_rmses[-1]:.4f}, R2: {custom_r2s[-1]:.4f} | "
+            f"Sklearn F1: {s_f1:.4f}, AUC: {s_auc:.4f}, RMSE: {sk_rmses[-1]:.4f}, R2: {sk_r2s[-1]:.4f}"
         )
 
     cv_results = {
+        "Custom RMSE": (np.mean(custom_rmses), np.std(custom_rmses)),
+        "Sklearn RMSE": (np.mean(sk_rmses), np.std(sk_rmses)),
+        "Custom R2": (np.mean(custom_r2s), np.std(custom_r2s)),
+        "Sklearn R2": (np.mean(sk_r2s), np.std(sk_r2s)),
         "Custom F1": (np.mean(custom_f1s), np.std(custom_f1s)),
         "Sklearn F1": (np.mean(sk_f1s), np.std(sk_f1s)),
         "Custom ROC-AUC": (np.mean(custom_aucs), np.std(custom_aucs)),
         "Sklearn ROC-AUC": (np.mean(sk_aucs), np.std(sk_aucs)),
-        "Custom R2": (np.mean(custom_r2s), np.std(custom_r2s)),
-        "Sklearn R2": (np.mean(sk_r2s), np.std(sk_r2s)),
     }
 
     print("\n[Cross-Validation Summary (Mean ± Std)]")
@@ -506,9 +514,7 @@ def run_svm_cross_validation(
         svc_pipeline.fit(X_fold_train, y_fold_train)
         svc_pred = svc_pipeline.predict(X_fold_val)
         svc_scores = svc_pipeline.decision_function(X_fold_val)
-        svc_metrics = _svm_classification_metrics(
-            y_fold_val, svc_pred, svc_scores
-        )
+        svc_metrics = _svm_classification_metrics(y_fold_val, svc_pred, svc_scores)
         model_scores["SVC RBF"]["F1"].append(svc_metrics["F1"])
         model_scores["SVC RBF"]["ROC-AUC"].append(svc_metrics["ROC-AUC"])
 
@@ -530,9 +536,7 @@ def run_svm_cross_validation(
         sgd_pipeline.fit(X_fold_train, y_fold_train)
         sgd_pred = sgd_pipeline.predict(X_fold_val)
         sgd_scores = sgd_pipeline.decision_function(X_fold_val)
-        sgd_metrics = _svm_classification_metrics(
-            y_fold_val, sgd_pred, sgd_scores
-        )
+        sgd_metrics = _svm_classification_metrics(y_fold_val, sgd_pred, sgd_scores)
         model_scores["SGD hinge"]["F1"].append(sgd_metrics["F1"])
         model_scores["SGD hinge"]["ROC-AUC"].append(sgd_metrics["ROC-AUC"])
 
@@ -685,12 +689,8 @@ def run_svm_benchmark(
         "Ours: Pegasos RFF": _svm_classification_metrics(
             y_test, custom_pred, custom_scores
         ),
-        "sklearn: SVC RBF": _svm_classification_metrics(
-            y_test, svc_pred, svc_scores
-        ),
-        "sklearn: SGD hinge": _svm_classification_metrics(
-            y_test, sgd_pred, sgd_scores
-        ),
+        "sklearn: SVC RBF": _svm_classification_metrics(y_test, svc_pred, svc_scores),
+        "sklearn: SGD hinge": _svm_classification_metrics(y_test, sgd_pred, sgd_scores),
     }
 
     test_results["Ours: Pegasos RFF"]["Fit time (s)"] = custom_fit_time
@@ -721,7 +721,9 @@ def run_svm_benchmark(
         "cross_validation": cv_results,
         "custom_model": custom_model,
     }
-def run_tree_benchmark() -> dict:
+
+
+def run_tree_benchmark(run_cv: bool = True, n_splits: int = 5) -> dict:
     """Complete driver for Problem 5 (Tree)."""
     figures_dir = ensure_figures_dir("report/figures")
 
@@ -776,10 +778,17 @@ def run_tree_benchmark() -> dict:
     }
     ev.compare(table_dict)
 
-    # 4. Generate Plot
+    # 4. Cross-Validation Uncertainty (Problem 5c)
+    cv_results = None
+    if run_cv:
+        cv_results = run_cross_validation_uncertainty(
+            X_tr, y_tr_tier, y_tr_p, n_splits=n_splits
+        )
+
+    # 5. Generate Plot
     plot_benchmark_results(task_b, task_a, figures_dir=figures_dir)
 
-    # 5. Gap & Structural Analysis
+    # 6. Gap & Structural Analysis
     print("\n=================================================================")
     print(" PROBLEM 5(a) STRUCTURAL & IMPLEMENTATION GAP ANALYSIS")
     print("=================================================================")
@@ -822,10 +831,10 @@ def run_tree_benchmark() -> dict:
     return {
         "task_b": task_b,
         "task_a": task_a,
+        "cv_results": cv_results,
     }
 
 
 if __name__ == "__main__":
     run_tree_benchmark()
     run_svm_benchmark()
-

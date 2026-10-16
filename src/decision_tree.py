@@ -84,6 +84,7 @@ class DecisionTree:
 
         self.classes_: np.ndarray | None = None
         self.n_features_in_: int | None = None
+        self.feature_importances_: np.ndarray | None = None
 
     # --- impurity -----------------------------------------------------------
     def _impurity(self, y) -> float:
@@ -281,6 +282,11 @@ class DecisionTree:
 
         node.feature = best_feature
         node.threshold = best_threshold
+
+        # Accumulate weighted impurity decrease for this feature.
+        # Weighted by n_samples so deeper nodes (fewer samples) contribute less.
+        self.feature_importances_[best_feature] += n_samples * best_decrease
+
         node.left = self._grow(X[left_mask], y[left_mask], depth + 1)
         node.right = self._grow(X[right_mask], y[right_mask], depth + 1)
         return node
@@ -305,7 +311,16 @@ class DecisionTree:
         else:
             self.classes_ = None
 
+        # Initialize importances accumulator before growing the tree.
+        self.feature_importances_ = np.zeros(self.n_features_in_, dtype=float)
+
         self.root = self._grow(X, y, depth=0)
+
+        # Normalize so importances sum to 1.0 (sklearn convention).
+        total = self.feature_importances_.sum()
+        if total > 0.0:
+            self.feature_importances_ /= total
+
         return self
 
     def _predict_one(self, x, node: Node):

@@ -433,12 +433,13 @@ def run_tree_tuning() -> dict:
         "leaf_study": leaf_res,
     }
 
+
 def run_svm_tuning() -> dict:
     """
-        Tune Pegasos SVM using validation data only.
+    Tune Pegasos SVM using validation data only.
 
-        Sweeps lambda and RFF gamma, records validation metrics and margin
-        diagnostics, and plots the selected model's objective history.
+    Sweeps lambda and RFF gamma, records validation metrics and margin
+    diagnostics, and plots the selected model's objective history.
     """
     figures_dir = ensure_figures_dir("report/figures")
 
@@ -459,9 +460,9 @@ def run_svm_tuning() -> dict:
     y_tr = y_tr.to_numpy(dtype=int)
     y_val = y_val.to_numpy(dtype=int)
 
-    lambda_values = [1e-4, 1e-3, 1e-2]
+    lambda_values = [1e-5, 1e-4, 1e-3, 1e-2, 0.1, 1.0]
     gamma_values = [0.1, 1.0, 10.0]
-    n_epochs = 10
+    n_epochs = 30
     n_components = 256
 
     results = []
@@ -508,21 +509,24 @@ def run_svm_tuning() -> dict:
     # For this objective, lambda = 1 / (n * C).
     equivalent_C = 1.0 / (len(y_tr) * best["lambda_"])
 
-    print("\nSelected SVM configuration (validation data only)")
-    print(f"  lambda:           {best['lambda_']:.1e}")
-    print(f"  approximate C:    {equivalent_C:.6g}")
-    print(f"  RFF gamma:        {best['gamma']:g}")
-    print(f"  epochs:           {n_epochs}")
-    print(f"  validation F1:    {best['f1']:.4f}")
-    print(f"  validation AUC:   {best['auc']:.4f}")
-    print(f"  weight norm:      {best['weight_norm']:.4f}")
-    print(f"  margin width:     {best['margin_width']:.4f}")
+    print(" PROBLEM 4(c) FINAL SVM CONFIGURATION (from Validation Evidence)")
+    print(f"  lambda            : {best['lambda_']:.1e}")
+    print(f"  approx. C (=1/nλ) : {equivalent_C:.6g}")
+    print(f"  RFF gamma         : {best['gamma']:g}")
+    print(f"  n_epochs          : {n_epochs}")
+    print(f"  n_components      : {n_components}")
+    print(f"  use_rff           : True")
+    print(f"  random_state      : {dp.SEED}")
+    print(f"  Validation F1     : {best['f1']:.4f}")
+    print(f"  Validation AUC    : {best['auc']:.4f}")
+    print(f"  weight norm ||w|| : {best['weight_norm']:.4f}")
+    print(f"  margin width 2/||w||: {best['margin_width']:.4f}")
     print(
-        f"  support vectors:  "
+        f"  support vectors   : "
         f"{len(best_model.support_vector_indices_)} / {len(y_tr)}"
     )
 
-    # Plot how lambda/gamma choices trade validation F1 against margin width.
+    # Plot 1: how lambda/gamma choices trade validation F1 against margin width.
     fig, ax = plt.subplots(figsize=(8, 5), dpi=300)
     for gamma in gamma_values:
         gamma_results = [r for r in results if r["gamma"] == gamma]
@@ -534,7 +538,7 @@ def run_svm_tuning() -> dict:
         )
 
     ax.set_xscale("log")
-    ax.set_xlabel("Regularization lambda")
+    ax.set_xlabel("Regularization lambda (log scale)")
     ax.set_ylabel("Validation F1")
     ax.set_title("RFF Pegasos SVM: Validation F1 by lambda and gamma")
     ax.grid(True, linestyle="--", alpha=0.6)
@@ -545,16 +549,60 @@ def run_svm_tuning() -> dict:
     plt.close(fig)
     print(f"Saved plot: {tradeoff_path}")
 
-    # Show the selected configuration's objective across epochs.
+    # Plot 2: Margin width 2/||w|| vs Validation F1 (scatter)
+    # Required bias-variance trade-off plot: as lambda grows the margin widens
+    # (simpler model) but classification F1 may drop.
+    _palette = {0.1: "#1f77b4", 1.0: "#ff7f0e", 10.0: "#2ca02c"}
+    fig, ax = plt.subplots(figsize=(8, 5), dpi=300)
+    for gamma in gamma_values:
+        gamma_results = [r for r in results if r["gamma"] == gamma]
+        xs = [r["margin_width"] for r in gamma_results]
+        ys = [r["f1"] for r in gamma_results]
+        lambdas = [r["lambda_"] for r in gamma_results]
+        ax.scatter(xs, ys, c=_palette[gamma], label=f"gamma={gamma:g}", zorder=3)
+        for x, y, l in zip(xs, ys, lambdas):
+            ax.annotate(
+                f"l={l:.0e}",
+                (x, y),
+                textcoords="offset points",
+                xytext=(4, 4),
+                fontsize=7,
+                color=_palette[gamma],
+            )
+    ax.scatter(
+        [best["margin_width"]],
+        [best["f1"]],
+        s=150,
+        marker="*",
+        color="red",
+        zorder=5,
+        label="Selected config",
+    )
+    ax.set_xlabel("Margin width  2/||w||  (wider = more regularized)")
+    ax.set_ylabel("Validation F1")
+    ax.set_title("Pegasos SVM: Margin Width vs Validation F1 Trade-off")
+    ax.grid(True, linestyle="--", alpha=0.6)
+    ax.legend()
+    fig.tight_layout()
+    margin_path = os.path.join(figures_dir, "svm_margin_vs_f1.png")
+    fig.savefig(margin_path)
+    plt.close(fig)
+    print(f"Saved plot: {margin_path}")
+
+    # Plot 3: Objective convergence of selected best model
     plt.figure(figsize=(8, 5), dpi=300)
     plt.plot(
         range(len(best_model.objective_history_)),
         best_model.objective_history_,
         marker="o",
+        markersize=4,
     )
     plt.xlabel("Epoch")
-    plt.ylabel("Regularized hinge-loss objective")
-    plt.title("Pegasos objective during training")
+    plt.ylabel("Regularized hinge-loss  J(w)")
+    plt.title(
+        f"Pegasos Objective Convergence\n"
+        f"(lambda={best['lambda_']:.1e}, gamma={best['gamma']:g}, {n_epochs} epochs)"
+    )
     plt.grid(True, linestyle="--", alpha=0.6)
     plt.tight_layout()
     objective_path = os.path.join(figures_dir, "svm_objective_convergence.png")
@@ -574,10 +622,8 @@ def run_svm_tuning() -> dict:
         "best_validation_auc": best["auc"],
         "results": results,
     }
+
+
 if __name__ == "__main__":
     run_tree_tuning()
     run_svm_tuning()
-
-
-
-
