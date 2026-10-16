@@ -18,6 +18,7 @@ report/figures/*.png
 *.log
 *.aux
 *.out
+*.synctex.gz
 results/
 *.csv.gz
 
