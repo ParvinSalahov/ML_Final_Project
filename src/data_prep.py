@@ -18,11 +18,7 @@ except ImportError:
 
 # --- Config -----------------------------------------------------------------
 SEED = 42
-DATA_PATH = (
-    "data/bina_az_sale.csv"
-    if os.path.exists("data/bina_az_sale.csv")
-    else "data/house_sale.csv"
-)
+DATA_PATH = "data/house_sale.csv"
 
 UNUSED_COLUMNS: list[str] = [
     "unit_price",
@@ -165,6 +161,7 @@ def clip_to_train_range(X_tr, *others):
     for X in others:
         clipped.append(X.clip(lower=lo, upper=hi, axis=1))
     return tuple(clipped)
+
 
 def impute_rooms(df, ref):
     df = df.copy()
