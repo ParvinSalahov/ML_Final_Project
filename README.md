@@ -10,7 +10,9 @@ with this pack.
 - **Demo:** defended in the session after the deadline.
 
 ## What you submit (on Moodle)
+
 Exactly **three** things; **one member submits** for the whole team:
+
 1. **GitHub link** to your repo (tagged `v1.0-final`).
 2. **Report PDF** (IEEE two-column — use `report/report.tex`).
 3. **Slides PDF**.
@@ -18,17 +20,20 @@ Exactly **three** things; **one member submits** for the whole team:
 Keep `contribution_report.md` in the repo root (checked at the demo).
 
 ## The two tasks
+
 - **Task A — Regression:** predict `price` (consider `log(price)`).
 - **Task B — Classification:** predict a derived **price tier**
   (premium vs standard, median split on the training set).
 
 ## Golden rule
+
 Your **decision tree** and your **SVM** must be **your own NumPy code**.
 scikit-learn is for the comparison baselines (and the optional bonuses)
 only. For the SVM you do **not** need a QP/SMO solver — use the
 **Pegasos** sub-gradient method (see the statement and `src/svm.py`).
 
 ## Repo layout
+
 ```
 .
 ├── README.md               # this file
@@ -49,15 +54,32 @@ only. For the SVM you do **not** need a QP/SMO solver — use the
 ```
 
 ## Reproducibility (graded)
+
 - Pin dependencies in `requirements.txt`; fix all random seeds.
 - `python -m src.run_all` must reproduce **every** headline number and
   figure from a clean checkout.
 - Do **not** commit the raw data archive (see `.gitignore`).
 
 ## Quick start
+
 ```bash
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-# put the dataset in data/ (see data/README.md), then:
+# Download dataset from Kaggle and place in data/ (see below), then:
 python -m src.run_all
 ```
+
+## Dataset (download required - not in repo)
+
+The **bina.az sale** dataset is **not committed** to the repo (see `.gitignore`).
+
+**Where to get it:** Kaggle dataset "binaaz-sale-project" by sehriyarmemmedli
+<https://www.kaggle.com/datasets/sehriyarmemmedli/binaaz-sale-project>
+
+**How to place it:**
+
+1. Download the dataset archive from Kaggle
+2. Extract it so the CSV lives directly in the `data/` folder as `data/house_sale.csv`
+3. The code expects the file at `data/house_sale.csv` (set in `src/data_prep.py`)
+
+**Important:** The dataset uses Azerbaijani column names (UTF-8 encoding). Any column derived from `price` (e.g., unit price) must be dropped to avoid leakage.
